@@ -122,6 +122,9 @@ class TruthTableView(QTableWidget):
                     if item:
                         item.setBackground(QColor("red"))
 
+    def reset_highlight(self):
+        self.highlight_errors([])
+
 
 class LogicGameScene(QGraphicsScene):
     def __init__(self):
@@ -310,7 +313,7 @@ class LogicGameUI(QMainWindow):
 
     def init_ui(self):
         self.setWindowTitle("Logic Game")
-        self.setGeometry(100, 100, 1000, 700)  # немного шире, если хочешь
+        self.setGeometry(100, 100, 1000, 700)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
@@ -370,6 +373,7 @@ class LogicGameUI(QMainWindow):
             return
         elif not self.game_model.current_level.is_valid_circuit():
             print("Схема не собрана.")
+            self.truth_table_view.reset_highlight()
             return
 
         if errors:
@@ -378,4 +382,4 @@ class LogicGameUI(QMainWindow):
             self.truth_table_view.highlight_errors(errors)
         else:
             print("Уровень пройден!")
-            self.truth_table_view.highlight_errors([])  # Убираем подсветку
+            self.truth_table_view.reset_highlight()  # Убираем подсветку

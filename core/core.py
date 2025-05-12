@@ -89,16 +89,6 @@ class Grid:
         return all(out in visited for out in output_elements)
 
 
-class TruthTable:
-    def __init__(self,
-                 table: Dict[Tuple[int, ...], Tuple[int, ...]],
-                 input_names: List[str],
-                 output_names: List[str]):
-        self.table = table  # Dict[Tuple[int], Tuple[int]]
-        self.input_names = input_names
-        self.output_names = output_names
-
-
 class Level:
     def __init__(self, grid: Grid, truth_table: Dict[Tuple[int, ...], Tuple[int, ...]]):
         self.grid = grid
