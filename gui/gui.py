@@ -1,6 +1,6 @@
 import itertools
 import math
-from typing import Tuple, Set
+from typing import Tuple, Set, Dict, List
 
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
@@ -77,15 +77,50 @@ class LogicElementItem(QGraphicsItem):
 
 
 class TruthTableView(QTableWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        pass
+    def __init__(self):
+        super().__init__()
+        self._truth_table = {}
 
-    def set_table(self, truth_table: TruthTable):
-        pass
+    def set_table(self, truth_table):
+        """Отображает таблицу истинности."""
+        self._truth_table = truth_table
+        self.clear()
+        self.setRowCount(len(truth_table))
+        self.setColumnCount(len(next(iter(truth_table))) + len(next(iter(truth_table.values()))))
 
-    def highlight_error_rows(self, error_inputs: Set[Tuple[int, ...]]):
-        pass
+        input_count = len(next(iter(truth_table)))
+        self.setHorizontalHeaderLabels(
+            [f'In {i+1}' for i in range(input_count)] +
+            [f'Out {i+1}' for i in range(len(next(iter(truth_table.values()))))]
+        )
+
+        for row_idx, (inputs, outputs) in enumerate(truth_table.items()):
+            for col_idx, val in enumerate(inputs + outputs):
+                item = QTableWidgetItem(str(val))
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+                self.setItem(row_idx, col_idx, item)
+
+        self.resizeColumnsToContents()
+
+    def highlight_errors(self, errors):
+        """Подсвечивает ошибки в таблице или очищает подсветку."""
+        # Очистка всех предыдущих подсветок
+        for row in range(self.rowCount()):
+            for col in range(self.columnCount()):
+                item = self.item(row, col)
+                if item:
+                    item.setBackground(QColor("white"))
+
+        if not errors:
+            return  # Если ошибок нет — выходим
+
+        error_inputs_set = set(e[0] for e in errors)
+        for row_idx, (inputs, _) in enumerate(self._truth_table.items()):
+            if inputs in error_inputs_set:
+                for col in range(self.columnCount()):
+                    item = self.item(row_idx, col)
+                    if item:
+                        item.setBackground(QColor("red"))
 
 
 class LogicGameScene(QGraphicsScene):
@@ -300,6 +335,10 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(QLabel("Элементы:"))
         side_panel.addWidget(self.toolbox)
 
+        self.truth_table_view = TruthTableView()
+        self.truth_table_view.set_table(self.game_model.current_level.truth_table)
+        side_panel.addWidget(self.truth_table_view)
+
         # Кнопка проверки
         self.test_button = QPushButton("Проверить уровень")
         self.test_button.clicked.connect(self.check_level)
@@ -324,14 +363,19 @@ class LogicGameUI(QMainWindow):
             self.scene.addItem(item)
 
     def check_level(self):
-        """Вызывает проверку уровня и отображает результат."""
         errors = self.game_model.check_level()
 
         if not self.game_model.current_level:
             print("Уровень не загружен.")
+            return
         elif not self.game_model.current_level.is_valid_circuit():
             print("Схема не собрана.")
-        elif errors:
+            return
+
+        if errors:
             print("Ошибки в схеме:", errors)
+            # Передаём индексы строк с ошибками
+            self.truth_table_view.highlight_errors(errors)
         else:
             print("Уровень пройден!")
+            self.truth_table_view.highlight_errors([])  # Убираем подсветку
