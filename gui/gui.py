@@ -10,7 +10,6 @@ from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF
 
 from core import InputElement
-from core.core import TruthTable
 from .render_strategy import get_render_strategy_for
 
 CELL_SIZE = 15
