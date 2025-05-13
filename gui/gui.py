@@ -5,7 +5,7 @@ from typing import Tuple, Set, Dict, List
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget, QFrame
+    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
@@ -232,6 +232,36 @@ class LogicGameScene(QGraphicsScene):
                 self.clear_selection()
 
         super().mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        item = self.itemAt(event.scenePos(), QTransform())
+        if isinstance(item, LogicElementItem):
+            # Получаем координаты в сцене
+            scene_pos = item.scenePos() + QPointF(item.boundingRect().width() / 2, item.boundingRect().height() / 2)
+
+            # Создаем QLineEdit
+            view = self.views()[0]  # QGraphicsView
+            edit = QLineEdit(item.logic_element.name, view)
+            edit.move(view.mapFromScene(scene_pos))
+            edit.setFixedWidth(100)
+            edit.setFocus()
+            edit.selectAll()
+            edit.show()
+
+            def finish_editing():
+                new_name = edit.text().strip()
+                if new_name and new_name != item.logic_element.name:
+                    success = self._parent_ui.game_model.rename_element(item.logic_element, new_name)
+                    if success:
+                        self.update()
+                    else:
+                        QMessageBox.warning(view, "Ошибка", "Имя должно быть уникальным.")
+                edit.deleteLater()
+
+            edit.editingFinished.connect(finish_editing)
+            return
+
+        super().mouseDoubleClickEvent(event)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Backspace:

@@ -1,4 +1,4 @@
-from collections import deque
+from collections import deque, defaultdict
 import itertools
 from operator import truth
 from typing import List
@@ -96,16 +96,6 @@ class Grid:
         return all(out in visited for out in output_elements)
 
 
-class TruthTable:
-    def __init__(self,
-                 table: Dict[Tuple[int, ...], Tuple[int, ...]],
-                 input_names: List[str],
-                 output_names: List[str]):
-        self.table = table  # Dict[Tuple[int], Tuple[int]]
-        self.input_names = input_names
-        self.output_names = output_names
-
-
 class Level:
     def __init__(self, grid: Grid, truth_table: Dict[Tuple[int, ...], Tuple[int, ...]]):
         self.grid = grid
@@ -184,6 +174,8 @@ class GameModel:
         self.current_level = level
         self.selected_element_type: Optional[type] = None
         self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement]
+        self.name_counter = defaultdict(int)
+        self.existing_names = set()
 
     def start_level(self, level_index: int):
         """Загружает указанный уровень"""
@@ -194,8 +186,26 @@ class GameModel:
     def create_element(self, element_type: type) -> Optional[LogicElement]:
         """Создает новый элемент (без размещения на поле)"""
         if element_type in self.toolbox:
-            return element_type()
+            new_element = element_type()
+            new_element.name = self.generate_unique_name(new_element.name)
+            return new_element
         return None
+
+    def generate_unique_name(self, base):
+        while True:
+            self.name_counter[base] += 1
+            candidate = f"{base}_{self.name_counter[base]}"
+            if candidate not in self.existing_names:
+                self.existing_names.add(candidate)
+                return candidate
+
+    def rename_element(self, element: LogicElement, new_name: str) -> bool:
+        if new_name in self.existing_names:
+            return False
+        self.existing_names.discard(element.name)
+        element.name = new_name
+        self.existing_names.add(new_name)
+        return True
 
     def place_element(self, element: LogicElement, x: int, y: int) -> bool:
         """Пытается разместить элемент на поле"""
