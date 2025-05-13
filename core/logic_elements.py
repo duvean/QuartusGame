@@ -49,8 +49,14 @@ class LogicElement(ABC):
         if not hasattr(target, "input_connections") or not isinstance(target.input_connections, list):
             return False
 
+        # Проверка на дублирование соединения
+        for existing_target, existing_input in self.output_connections[output_port]:
+            if existing_target is target and existing_input == target_input:
+                return False
+
         self.output_connections[output_port].append((target, target_input))
         target.input_connections[target_input] = (self, output_port)
+        print(f"Connected {output_port} with {target_input}")
 
         return True
 
