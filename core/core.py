@@ -28,6 +28,13 @@ class Grid:
         self.elements.append(element)
         return True
 
+    def remove_element(self, element: LogicElement) -> bool:
+        if element.position is not None:
+            element.position = None
+            self.elements.remove(element)
+            return True
+        return False
+
     def get_element_at(self, x: int, y: int) -> Optional[LogicElement]:
         for elem in self.elements:
             if elem.position is None:
@@ -87,6 +94,16 @@ class Grid:
                         queue.append(target)
 
         return all(out in visited for out in output_elements)
+
+
+class TruthTable:
+    def __init__(self,
+                 table: Dict[Tuple[int, ...], Tuple[int, ...]],
+                 input_names: List[str],
+                 output_names: List[str]):
+        self.table = table  # Dict[Tuple[int], Tuple[int]]
+        self.input_names = input_names
+        self.output_names = output_names
 
 
 class Level:
@@ -197,6 +214,9 @@ class GameModel:
         """Пытается разместить элемент на поле"""
         return self.grid.add_element(element, x, y)
 
+    def remove_element(self, element: LogicElement) -> bool:
+        return self.grid.remove_element(element)
+
     def get_element_at(self, x: int, y: int) -> Optional[LogicElement]:
         """Возвращает элемент в указанной позиции"""
         return self.grid.get_element_at(x, y)
@@ -205,10 +225,16 @@ class GameModel:
         """Возвращает занятые ячейки"""
         return self.grid.get_occupied_cells()
 
-    def connect_elements(self, source: LogicElement, source_port: int,
-                       target: LogicElement, target_port: int) -> bool:
+    @staticmethod
+    def connect_elements(source: LogicElement, source_port: int,
+                         target: LogicElement, target_port: int) -> bool:
         """Соединяет выход source с входом target"""
         return source.connect_output(source_port, target, target_port)
+
+    @staticmethod
+    def disconnect_port(source: LogicElement, port_type: str, port: int) -> bool:
+        """Удаляет связи с выбранным портом"""
+        return source.disconnect_port(port_type, port)
 
     def run_auto_test(self) -> List[Tuple]:
         """Запускает автоматическое тестирование схемы"""
@@ -222,11 +248,10 @@ class GameModel:
             self.grid = Grid()
             self.current_level.grid = self.grid
 
-    @property
     def is_level_passed(self) -> bool:
         return self.current_level is not None \
             and self.current_level.is_valid_circuit() \
-            and len(self.run_auto_test()) == 0
+            and len(self.current_level.auto_test()) == 0
 
     def check_level(self) -> List[Tuple]:
         """
@@ -242,4 +267,3 @@ class GameModel:
 
         errors = level.auto_test()
         return errors
-
