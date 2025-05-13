@@ -179,24 +179,11 @@ class Level:
 
 
 class GameModel:
-    def __init__(self):
-        self.grid = Grid()
-        self.current_level: Optional[Level] = None
-        self.levels: List[Level] = []
+    def __init__(self, level: Level):
+        self.grid = level.grid
+        self.current_level = level
         self.selected_element_type: Optional[type] = None
         self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement]
-        self._init_levels()
-
-    def _init_levels(self):
-        # Пример инициализации уровней
-        level1_grid = Grid()
-        truth_table = {
-            (0, 0): (0,),
-            (0, 1): (0,),
-            (1, 0): (0,),
-            (1, 1): (1,)
-        }
-        self.levels.append(Level(level1_grid, truth_table))
 
     def start_level(self, level_index: int):
         """Загружает указанный уровень"""
@@ -241,12 +228,6 @@ class GameModel:
         if self.current_level:
             return self.current_level.auto_test()
         return []
-
-    def reset_level(self):
-        """Сбрасывает текущий уровень"""
-        if self.current_level:
-            self.grid = Grid()
-            self.current_level.grid = self.grid
 
     def is_level_passed(self) -> bool:
         return self.current_level is not None \

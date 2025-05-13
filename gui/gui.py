@@ -5,11 +5,12 @@ from typing import Tuple, Set, Dict, List
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout
+    QVBoxLayout, QStackedWidget
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath
-from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF
+from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
-from core import InputElement
+from core import InputElement, GameModel
+from core.level_repository import get_all_levels
 from .render_strategy import get_render_strategy_for
 
 CELL_SIZE = 15
@@ -303,6 +304,8 @@ class LogicGameScene(QGraphicsScene):
 
 
 class LogicGameUI(QMainWindow):
+    back_to_menu_requested = pyqtSignal()
+
     def __init__(self, game_model):
         super().__init__()
         self.game_model = game_model
@@ -346,6 +349,11 @@ class LogicGameUI(QMainWindow):
         self.test_button.clicked.connect(self.check_level)
         side_panel.addWidget(self.test_button)
 
+        # Кнопка возврата
+        self.back_button = QPushButton("Назад в меню")
+        self.back_button.clicked.connect(self.back_to_menu_requested.emit)
+        side_panel.addWidget(self.back_button)
+
         # Оборачиваем в QWidget и добавляем в главный layout
         side_widget = QWidget()
         side_widget.setLayout(side_panel)
@@ -382,3 +390,56 @@ class LogicGameUI(QMainWindow):
         else:
             print("Уровень пройден!")
             self.truth_table_view.reset_highlight()  # Убираем подсветку
+
+
+class MainMenuWidget(QWidget):
+    level_selected = pyqtSignal(int)  # Сигнал, чтобы передать номер уровня
+
+    def __init__(self, levels):
+        super().__init__()
+        self.levels = levels
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        title = QLabel("Выберите уровень")
+        layout.addWidget(title)
+
+        for i, level in enumerate(self.levels):
+            btn = QPushButton(f"Уровень {i + 1}")
+            btn.clicked.connect(lambda checked, index=i: self.level_selected.emit(index))
+            layout.addWidget(btn)
+
+        self.setLayout(layout)
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Logic Circuit Game")
+        self.setGeometry(100, 100, 1000, 700)
+
+        self.levels = get_all_levels()
+
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
+
+        self.menu = MainMenuWidget(self.levels)
+        self.menu.level_selected.connect(self.load_level)
+
+        self.stack.addWidget(self.menu)
+        self.stack.setCurrentWidget(self.menu)
+
+    def load_level(self, level_index: int):
+        level = self.levels[level_index]
+        model = GameModel(level)
+        self.game_ui = LogicGameUI(model)
+        self.game_ui.back_to_menu_requested.connect(self.show_menu)
+
+        self.stack.addWidget(self.game_ui)
+        self.stack.setCurrentWidget(self.game_ui)
+
+    def show_menu(self):
+        self.stack.setCurrentWidget(self.menu)

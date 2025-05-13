@@ -56,7 +56,6 @@ class LogicElement(ABC):
 
         self.output_connections[output_port].append((target, target_input))
         target.input_connections[target_input] = (self, output_port)
-        print(f"Connected {output_port} with {target_input}")
 
         return True
 
