@@ -5,8 +5,8 @@ from typing import Tuple, Set, Dict, List
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget
-from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath
+    QVBoxLayout, QStackedWidget, QFrame
+from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
 from core import InputElement, GameModel
@@ -311,6 +311,7 @@ class LogicGameUI(QMainWindow):
         self.game_model = game_model
         self.selected_element_type = None
         self.selected_port = None
+        self.is_menu_expanded = False
         self.init_ui()
 
     def init_ui(self):
@@ -320,8 +321,37 @@ class LogicGameUI(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Левая часть — графическая сцена
+        # === ЛЕВОЕ БОКОВОЕ МЕНЮ ===
+        self.is_menu_expanded = False
+        self.side_menu = QFrame()
+        self.side_menu.setFixedWidth(40)
+        self.side_menu.setFrameShape(QFrame.Shape.StyledPanel)
+
+        menu_layout = QVBoxLayout(self.side_menu)
+        menu_layout.setContentsMargins(5, 5, 5, 5)
+
+        # Кнопка сворачивания меню
+        self.toggle_menu_button = QPushButton()
+        self.toggle_menu_button.setIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditUndo))
+        self.toggle_menu_button.setStyleSheet("text-align: left;")
+        self.toggle_menu_button.clicked.connect(self.toggle_side_menu)
+        self.toggle_menu_button.setFixedHeight(40)
+        menu_layout.addWidget(self.toggle_menu_button)
+
+        # Кнопка "Назад в меню"
+        self.back_button = QPushButton()
+        self.back_button.setIcon(QIcon.fromTheme("go-home"))
+        self.back_button.setStyleSheet("text-align: left;")
+        self.back_button.setFixedHeight(40)
+        self.back_button.clicked.connect(self.back_to_menu_requested.emit)
+        menu_layout.addWidget(self.back_button)
+
+        menu_layout.addStretch()
+        main_layout.addWidget(self.side_menu)
+
+        # === ЦЕНТРАЛЬНАЯ ЧАСТЬ — ГРАФИЧЕСКОЕ ПОЛЕ ===
         self.scene = LogicGameScene()
         self.scene.set_parent_ui(self)
 
@@ -329,10 +359,9 @@ class LogicGameUI(QMainWindow):
         self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
         main_layout.addWidget(self.view, stretch=3)
 
-        # Правая часть — вертикальная панель управления
+        # === ПРАВАЯ ЧАСТЬ — ПАНЕЛЬ ЭЛЕМЕНТОВ ===
         side_panel = QVBoxLayout()
 
-        # Toolbox
         self.toolbox = QListWidget()
         for element_type in self.game_model.toolbox:
             self.toolbox.addItem(element_type.__name__)
@@ -344,20 +373,24 @@ class LogicGameUI(QMainWindow):
         self.truth_table_view.set_table(self.game_model.current_level.truth_table)
         side_panel.addWidget(self.truth_table_view)
 
-        # Кнопка проверки
         self.test_button = QPushButton("Проверить уровень")
         self.test_button.clicked.connect(self.check_level)
         side_panel.addWidget(self.test_button)
 
-        # Кнопка возврата
-        self.back_button = QPushButton("Назад в меню")
-        self.back_button.clicked.connect(self.back_to_menu_requested.emit)
-        side_panel.addWidget(self.back_button)
-
-        # Оборачиваем в QWidget и добавляем в главный layout
         side_widget = QWidget()
         side_widget.setLayout(side_panel)
         main_layout.addWidget(side_widget, stretch=1)
+
+    def toggle_side_menu(self):
+        self.is_menu_expanded = not self.is_menu_expanded
+        if self.is_menu_expanded:
+            self.side_menu.setFixedWidth(200)
+            self.toggle_menu_button.setText("  Свернуть")
+            self.back_button.setText("  Вернуться в меню")
+        else:
+            self.side_menu.setFixedWidth(40)
+            self.toggle_menu_button.setText("")
+            self.back_button.setText("")
 
     def select_element(self, item):
         element_name = item.text()
