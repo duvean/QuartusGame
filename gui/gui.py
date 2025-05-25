@@ -5,7 +5,7 @@ from typing import Tuple, Set, Dict, List
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox
+    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
@@ -179,6 +179,17 @@ class LogicGameScene(QGraphicsScene):
 
         if isinstance(item, LogicElementItem):
             clicked_on_port = False
+
+            if event.button() == Qt.MouseButton.RightButton:
+                # Контекстное меню
+                menu = QMenu()
+                edit_action = menu.addAction("Редактировать")
+                action = menu.exec(event.screenPos())
+
+                if action == edit_action:
+                    self.show_edit_dialog(item)
+                return
+
             for x, y, port_type, port_index in item.ports:
                 if (event.scenePos() - item.scenePos() - QPointF(x, y)).manhattanLength() < 6:
                     clicked_on_port = True
@@ -219,7 +230,7 @@ class LogicGameScene(QGraphicsScene):
 
         else:
             # Клик не по элементу — пробуем разместить новый, если он выбран
-            if self._parent_ui.selected_element_type:
+            if event.button() == Qt.MouseButton.LeftButton and self._parent_ui.selected_element_type:
                 scene_pos = event.scenePos()
                 x = math.floor(scene_pos.x() / CELL_SIZE) * CELL_SIZE
                 y = math.floor(scene_pos.y() / CELL_SIZE) * CELL_SIZE
@@ -271,6 +282,50 @@ class LogicGameScene(QGraphicsScene):
                 if self.selected_element.logic_element in self._parent_ui.game_model.grid.elements:
                     self._parent_ui.game_model.grid.elements.remove(self.selected_element.logic_element)
                 self.selected_element = None
+
+    def show_edit_dialog(self, item: LogicElementItem):
+        dialog = QDialog()
+        dialog.setWindowTitle("Редактирование элемента")
+
+        layout = QFormLayout()
+
+        name_edit = QLineEdit(item.logic_element.name)
+        layout.addRow("Название элемента:", name_edit)
+
+        input_port_edits = []
+        for i in range(item.logic_element.num_inputs):
+            edit = QLineEdit(item.logic_element.get_input_port_name(i))
+            layout.addRow(f"Вход {i}:", edit)
+            input_port_edits.append(edit)
+
+        output_port_edits = []
+        for i in range(item.logic_element.num_outputs):
+            edit = QLineEdit(item.logic_element.get_output_port_name(i))
+            layout.addRow(f"Выход {i}:", edit)
+            output_port_edits.append(edit)
+
+        save_button = QPushButton("Сохранить")
+        save_button.clicked.connect(lambda: dialog.accept())
+        layout.addWidget(save_button)
+
+        dialog.setLayout(layout)
+
+        if dialog.exec():
+            # Применяем изменения
+            new_name = name_edit.text().strip()
+            if new_name != item.logic_element.name:
+                success = self._parent_ui.game_model.rename_element(item.logic_element, new_name)
+                if not success:
+                    QMessageBox.warning(None, "Ошибка", "Имя должно быть уникальным.")
+                    return
+
+            for i, edit in enumerate(input_port_edits):
+                item.logic_element.set_input_port_name(i, edit.text().strip())
+
+            for i, edit in enumerate(output_port_edits):
+                item.logic_element.set_output_port_name(i, edit.text().strip())
+
+            self.update()
 
     def clear_selection(self):
         if self.selected_element:

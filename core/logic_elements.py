@@ -25,6 +25,23 @@ class LogicElement(ABC):
         ]
         self.output_values: List[int] = [0] * num_outputs
 
+        self.input_names = [f"In{i + 1}" for i in range(num_inputs)]
+        self.output_names = [f"Out{i + 1}" for i in range(num_outputs)]
+
+    def get_input_port_name(self, index):
+        return self.input_names[index] if index < len(self.input_names) else f"IN{index}"
+
+    def set_input_port_name(self, index, name):
+        if index < len(self.input_names):
+            self.input_names[index] = name
+
+    def get_output_port_name(self, index):
+        return self.output_names[index] if index < len(self.output_names) else f"OUT{index}"
+
+    def set_output_port_name(self, index, name):
+        if index < len(self.output_names):
+            self.output_names[index] = name
+
     def get_output_values(self) -> List[int]:
         return self.output_values
 

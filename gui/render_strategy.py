@@ -26,17 +26,24 @@ class AbstractElementPainter(ABC):
             painter.drawEllipse(QPointF(x, y), 6, 6)
 
             # Отображение значения
+            port_name = None
             value = None
             if port_type == "input" and port_index < len(element.input_connections):
+                port_name = element.input_names[port_index]
                 conn = element.input_connections[port_index]
                 if conn is not None:
                     value = conn[0].get_output_values()[conn[1]]
             elif port_type == "output":
+                port_name = element.output_names[port_index]
                 value = element.get_output_values()[port_index]
 
             if value is not None:
                 painter.setPen(Qt.GlobalColor.black)
                 painter.drawText(x - 20, y + 4, f"[{str(value)}]")
+
+            if port_name is not None:
+                painter.setPen(Qt.GlobalColor.black)
+                painter.drawText(x + 8, y - 8, port_name)
 
 
 class DefaultElementPainter(AbstractElementPainter):
