@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from PyQt6.QtGui import QPainter, QBrush, QColor, QPen
 from PyQt6.QtCore import QRectF, Qt, QPointF
-from core import AndElement, NotElement
+from core import AndElement, NotElement, InputElement, OutputElement, OrElement, XorElement
 
 CELL_SIZE = 25
 
@@ -11,7 +11,12 @@ class AbstractElementPainter(ABC):
     def paint(self, painter: QPainter, rect: QRectF, element, is_selected: bool, game_item) -> None:
         raise NotImplementedError
 
-    def draw_ports(self, painter: QPainter, element, game_item) -> None:
+    @abstractmethod
+    def create_ports(self, element, game_item) -> list[tuple[int, int, str, int]]:
+        raise NotImplementedError
+
+    @staticmethod
+    def paint_ports(painter: QPainter, element, game_item) -> None:
         for x, y, port_type, port_index in game_item.ports:
             scene = game_item.scene()
             is_selected_port = (
@@ -39,49 +44,169 @@ class AbstractElementPainter(ABC):
 
             if value is not None:
                 painter.setPen(Qt.GlobalColor.black)
-                painter.drawText(x - 20, y + 4, f"[{str(value)}]")
+                painter.drawText(QPointF(x - 20, y + 4), f"[{str(value)}]")
 
+            # Отображение имени
             if port_name is not None:
                 painter.setPen(Qt.GlobalColor.black)
-                painter.drawText(x + 8, y + 4, port_name)
+                painter.drawText(QPointF(x + 8, y + 4), port_name)
 
 
-class DefaultElementPainter(AbstractElementPainter):
+class DefaultRednerStrategy(AbstractElementPainter):
+    def paint(self, painter, rect, element, is_selected, game_item):
+        # Внешний прямоугольник
+        painter.setBrush(QBrush(QColor(240, 240, 255)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
+        painter.drawRect(rect)
+
+        # Параметры внутреннего прямоугольника
+        margin = 5
+        inner_rect = rect.adjusted(margin, margin + 15, -margin, -margin)
+
+        # Внутренний прямоугольник
+        painter.setBrush(QBrush(QColor(200, 200, 255)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 1))
+        painter.drawRect(inner_rect)
+
+        # Название элемента сверху, между прямоугольниками
+        painter.setPen(Qt.GlobalColor.black)
+        name_rect = QRectF(rect.left(), rect.top(), rect.width(), 15)
+        painter.drawText(name_rect, Qt.AlignmentFlag.AlignCenter, element.name)
+
+        # Порты
+        self.paint_ports(painter, element, game_item)
+
+    def create_ports(self, element, game_item):
+        ports = []
+
+        rect = game_item.boundingRect()
+        margin = 5
+        inner_rect = rect.adjusted(margin, margin + 15, -margin, -margin)
+        total_height = inner_rect.height()
+        left_x = inner_rect.left()
+        right_x = inner_rect.right()
+
+        def get_centered_ys(num_ports):
+            if num_ports == 0:
+                return []
+
+            if num_ports == 1:
+                return [inner_rect.top() + total_height / 2]
+
+            max_total_spacing = total_height - CELL_SIZE
+            spacing = min(CELL_SIZE, max_total_spacing / (num_ports - 1))
+            group_height = spacing * (num_ports - 1)
+            start_y = inner_rect.top() + (total_height - group_height) / 2
+            return [start_y + i * spacing for i in range(num_ports)]
+
+        input_ys = get_centered_ys(element.num_inputs)
+        output_ys = get_centered_ys(element.num_outputs)
+
+        for i, y in enumerate(input_ys):
+            ports.append((left_x - 3, y, 'input', i))  # левее внутреннего прямоугольника
+
+        for i, y in enumerate(output_ys):
+            ports.append((right_x + 3, y, 'output', i))  # правее внутреннего прямоугольника
+
+        return ports
+
+
+class PrimitiveElementPainter(AbstractElementPainter):
+    @abstractmethod
+    def paint(self, painter: QPainter, rect: QRectF, element, is_selected: bool, game_item) -> None:
+        raise NotImplementedError
+
+    def create_ports(self, element, game_item) -> list[tuple[int, int, str, int]]:
+        rect = game_item.boundingRect()
+
+        total_height = rect.height()
+        left_x = rect.left()
+        right_x = rect.right()
+
+        def get_centered_ys(num_ports):
+            if num_ports == 0:
+                return []
+
+            if num_ports == 1:
+                return [rect.top() + total_height / 2]
+
+            max_total_spacing = total_height - CELL_SIZE
+            spacing = min(CELL_SIZE, max_total_spacing / (num_ports - 1))
+            group_height = spacing * (num_ports - 1)
+            start_y = rect.top() + (total_height - group_height) / 2
+            return [start_y + i * spacing for i in range(num_ports)]
+
+        input_ys = get_centered_ys(element.num_inputs)
+        output_ys = get_centered_ys(element.num_outputs)
+
+        ports = []
+        for i, y in enumerate(input_ys):
+            ports.append((left_x + 8, y, 'input', i))
+        for i, y in enumerate(output_ys):
+            ports.append((right_x - 8, y, 'output', i))
+
+        return ports
+
+
+class InOutRenderStrategy(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
         painter.drawRect(rect)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
-        self.draw_ports(painter, element, game_item)
+        self.paint_ports(painter, element, game_item)
 
 
-class AndRenderStrategy(AbstractElementPainter):
+class AndRenderStrategy(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
         painter.drawRect(rect)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
-        self.draw_ports(painter, element, game_item)
+        self.paint_ports(painter, element, game_item)
 
 
-class NotRenderStrategy(AbstractElementPainter):
+class OrRenderStrategy(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
         painter.drawRect(rect)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
-        self.draw_ports(painter, element, game_item)
+        self.paint_ports(painter, element, game_item)
+
+
+class NotRenderStrategy(PrimitiveElementPainter):
+    def paint(self, painter, rect, element, is_selected, game_item):
+        painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
+        painter.drawRect(rect)
+        painter.setPen(Qt.GlobalColor.black)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
+        self.paint_ports(painter, element, game_item)
+
+
+class XorRenderStrategy(PrimitiveElementPainter):
+    def paint(self, painter, rect, element, is_selected, game_item):
+        painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
+        painter.drawRect(rect)
+        painter.setPen(Qt.GlobalColor.black)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
+        self.paint_ports(painter, element, game_item)
 
 
 painter_registry = {
+    InputElement: InOutRenderStrategy(),
+    OutputElement: InOutRenderStrategy(),
     AndElement: AndRenderStrategy(),
+    OrElement: OrRenderStrategy(),
     NotElement: NotRenderStrategy(),
+    XorElement: XorRenderStrategy(),
 }
-
-default_painter = DefaultElementPainter()
+default_painter = DefaultRednerStrategy()
 
 def get_render_strategy_for(element):
     return painter_registry.get(type(element), default_painter)

@@ -20,6 +20,7 @@ class LogicElementItem(QGraphicsItem):
         super().__init__()
         self.logic_element = logic_element
         self.setPos(x, y)
+        self.painter_strategy = get_render_strategy_for(self.logic_element)
         self.ports = self.create_ports()
         self.is_selected = False
         self.selected_port_index = None
@@ -62,36 +63,7 @@ class LogicElementItem(QGraphicsItem):
         return QRectF(0, 0, w * CELL_SIZE, h * CELL_SIZE)
 
     def create_ports(self):
-        ports = []
-
-        def get_centered_port_ys(num_ports, element_height):
-            total_height = element_height * CELL_SIZE
-
-            if num_ports == 0:
-                return []
-
-            if num_ports == 1:
-                return [total_height // 2]
-
-            # Расстояние не больше CELL_SIZE, но может быть меньше если высоты не хватает
-            max_total_spacing = total_height - CELL_SIZE  # минимум CELL_SIZE на 1 порт
-            spacing = min(CELL_SIZE, max_total_spacing // (num_ports - 1)) if num_ports > 1 else 0
-
-            group_height = spacing * (num_ports - 1)
-            start_y = (total_height - group_height) // 2
-
-            return [start_y + i * spacing for i in range(num_ports)]
-
-        input_ys = get_centered_port_ys(self.logic_element.num_inputs, self.logic_element.height)
-        output_ys = get_centered_port_ys(self.logic_element.num_outputs, self.logic_element.height)
-
-        for i, y in enumerate(input_ys):
-            ports.append((7, y, 'input', i))  # Слева
-
-        for i, y in enumerate(output_ys):
-            ports.append((self.logic_element.width * CELL_SIZE - 7, y, 'output', i))
-
-        return ports
+        return self.painter_strategy.create_ports(self.logic_element, self)
 
     def paint(self, painter: QPainter, option, widget):
         rect = self.boundingRect()

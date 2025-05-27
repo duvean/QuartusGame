@@ -173,7 +173,7 @@ class GameModel:
         self.grid = level.grid
         self.current_level = level
         self.selected_element_type: Optional[type] = None
-        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement]
+        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, CustomElement]
         self.name_counter = defaultdict(int)
         self.existing_names = set()
 
