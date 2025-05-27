@@ -17,8 +17,9 @@ class LogicElement(ABC):
         self.position: Optional[Tuple[int, int]] = None
         self.name = name
 
-        self.input_connections: List[Optional[Tuple['LogicElement', int]]] = [
-            None for _ in range(num_inputs)
+        # Модифицировано: теперь каждый вход может иметь несколько соединений
+        self.input_connections: List[List[Tuple['LogicElement', int]]] = [
+            [] for _ in range(num_inputs)
         ]
         self.output_connections: List[List[Tuple['LogicElement', int]]] = [
             [] for _ in range(num_outputs)
@@ -76,25 +77,27 @@ class LogicElement(ABC):
                 return False
 
         self.output_connections[output_port].append((target, target_input))
-        target.input_connections[target_input] = (self, output_port)
+        target.input_connections[target_input].append((self, output_port))  # Модифицировано
 
         return True
 
     def disconnect_port(self, port_type, port_index):
         if port_type == "input":
-            conn = self.input_connections[port_index]
-            if conn is not None:
-                source, source_output_index = conn
+            # Удалить все входные соединения для данного порта
+            for source, source_output_index in self.input_connections[port_index]:
                 source.output_connections[source_output_index] = [
                     (t, tp) for (t, tp) in source.output_connections[source_output_index]
-                    if t != self or tp != port_index
+                    if not (t is self and tp == port_index)
                 ]
-            self.input_connections[port_index] = None
+            self.input_connections[port_index].clear()
+
 
         elif port_type == "output":
             for target, target_port in self.output_connections[port_index]:
-                if target.input_connections[target_port] == (self, port_index):
-                    target.input_connections[target_port] = None
+                target.input_connections[target_port] = [
+                    (s, sp) for (s, sp) in target.input_connections[target_port]
+                    if not (s is self and sp == port_index)
+                ]
             self.output_connections[port_index].clear()
 
     def disconnect_all(self):
@@ -104,12 +107,13 @@ class LogicElement(ABC):
             self.disconnect_port("output", i)
 
     def get_input_value(self, input_port: int) -> int:
-        conn = self.input_connections[input_port]
-        if conn:
-            source_elem, source_port = conn
-            value = source_elem.output_values[source_port]
-            return value
-        return 0
+        result = 0
+        for source, source_output in self.input_connections[input_port]:
+            if 0 <= source_output < len(source.output_values):
+                if source.output_values[source_output]:
+                    result = 1
+                    break
+        return result
 
     @abstractmethod
     def compute_outputs(self):

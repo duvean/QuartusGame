@@ -30,18 +30,36 @@ class AbstractElementPainter(ABC):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(QPointF(x, y), 6, 6)
 
-            # Отображение значения
             port_name = None
             value = None
+
             if port_type == "input" and port_index < len(element.input_connections):
                 port_name = element.input_names[port_index]
-                conn = element.input_connections[port_index]
-                if conn is not None:
-                    value = conn[0].get_output_values()[conn[1]]
+                conns = element.input_connections[port_index]
+
+                if isinstance(conns, list):
+                    # Несколько соединений к одному входу допустимо
+                    for conn in conns:
+                        if conn is None:
+                            continue
+                        source, source_port = conn
+                        if 0 <= source_port < len(source.get_output_values()):
+                            if source.get_output_values()[source_port]: # Значение по OR от соединений
+                                value = 1
+                                break
+                    else:
+                        value = 0
+                elif isinstance(conns, tuple):
+                    # Поддержка старого формата (одиночного соединения)
+                    source, source_port = conns
+                    if 0 <= source_port < len(source.get_output_values()):
+                        value = source.get_output_values()[source_port]
             elif port_type == "output":
                 port_name = element.output_names[port_index]
-                value = element.get_output_values()[port_index]
+                if 0 <= port_index < len(element.get_output_values()):
+                    value = element.get_output_values()[port_index]
 
+            # Отображение значения
             if value is not None:
                 painter.setPen(Qt.GlobalColor.black)
                 painter.drawText(QPointF(x - 20, y + 4), f"[{str(value)}]")

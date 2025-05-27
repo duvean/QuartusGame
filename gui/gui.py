@@ -231,6 +231,7 @@ class LogicGameScene(QGraphicsScene):
                 self.clear_selection()
                 self.selected_element = item
                 item.is_selected = True
+                print(f'Conntections:\n{item.logic_element.input_connections}\n{item.logic_element.output_connections}')
 
         else:
             # Клик не по элементу — пробуем разместить новый, если он выбран
@@ -335,37 +336,41 @@ class LogicGameScene(QGraphicsScene):
         self.connections.clear()
 
         for element_item in self.items():
-            if isinstance(element_item, LogicElementItem):
-                for output_index, output_conns in enumerate(element_item.logic_element.output_connections):
-                    for target, target_port in output_conns:
-                        for other_item in self.items():
-                            if isinstance(other_item, LogicElementItem) and other_item.logic_element == target:
-                                '''
-                                x1 = element_item.scenePos().x() + 40
-                                y1 = element_item.scenePos().y() + 10 + output_index * 15
-                                x2 = other_item.scenePos().x() + 10
-                                y2 = other_item.scenePos().y() + 10 + target_port * 15
-                                line = QGraphicsLineItem(x1, y1, x2, y2)
-                                self.connections.append(line)
-                                self.addItem(line)
-                                '''
-                                # Для ортогональных линий (работает, но пока некрасиво)
-                                x1 = element_item.scenePos().x() + element_item.logic_element.width * CELL_SIZE - 10
-                                y1 = element_item.scenePos().y() + 10 + output_index * 15
-                                x2 = other_item.scenePos().x() + 10
-                                y2 = other_item.scenePos().y() + 10 + target_port * 15
+            if not isinstance(element_item, LogicElementItem):
+                continue
 
-                                path = QPainterPath(QPointF(x1, y1))
+            for output_index, output_conns in enumerate(element_item.logic_element.output_connections):
+                for target, target_port in output_conns:
+                    for other_item in self.items():
+                        if isinstance(other_item, LogicElementItem) and other_item.logic_element == target:
+                            # Получаем координаты выходного порта по индексу
+                            source_port = next(
+                                (x for x in element_item.ports if x[2] == 'output' and x[3] == output_index), None
+                            )
+                            target_port_info = next(
+                                (x for x in other_item.ports if x[2] == 'input' and x[3] == target_port), None
+                            )
 
-                                mid_x = (x1 + x2) / 2
-                                path.lineTo(mid_x, y1)  # горизонтально до середины
-                                path.lineTo(mid_x, y2)  # вертикально до нужной высоты
-                                path.lineTo(x2, y2)  # горизонтально к точке назначения
+                            if source_port is None or target_port_info is None:
+                                continue  # защита от ошибок
 
-                                path_item = QGraphicsPathItem(path)
-                                path_item.setPen(QPen(Qt.GlobalColor.black, 2))
-                                self.connections.append(path_item)
-                                self.addItem(path_item)
+                            # Локальные координаты в координаты сцены
+                            source_point = element_item.mapToScene(QPointF(source_port[0], source_port[1]))
+                            target_point = other_item.mapToScene(QPointF(target_port_info[0], target_port_info[1]))
+                            x1, y1 = source_point.x(), source_point.y()
+                            x2, y2 = target_point.x(), target_point.y()
+
+                            # Построение ортогонального пути
+                            path = QPainterPath(QPointF(x1, y1))
+                            mid_x = (x1 + x2) / 2
+                            path.lineTo(mid_x, y1)
+                            path.lineTo(mid_x, y2)
+                            path.lineTo(x2, y2)
+
+                            path_item = QGraphicsPathItem(path)
+                            path_item.setPen(QPen(Qt.GlobalColor.black, 2))
+                            self.connections.append(path_item)
+                            self.addItem(path_item)
 
 
 
