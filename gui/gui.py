@@ -231,7 +231,6 @@ class LogicGameScene(QGraphicsScene):
                 self.clear_selection()
                 self.selected_element = item
                 item.is_selected = True
-                print(f'Conntections:\n{item.logic_element.input_connections}\n{item.logic_element.output_connections}')
 
         else:
             # Клик не по элементу — пробуем разместить новый, если он выбран
