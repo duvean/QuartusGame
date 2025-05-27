@@ -212,7 +212,11 @@ class GameModel:
         return self.grid.add_element(element, x, y)
 
     def remove_element(self, element: LogicElement) -> bool:
-        return self.grid.remove_element(element)
+        """Удаляет элемент с поля"""
+        if self.grid.remove_element(element):
+            self.existing_names.discard(element.name)
+            return True
+        return False
 
     def get_element_at(self, x: int, y: int) -> Optional[LogicElement]:
         """Возвращает элемент в указанной позиции"""

@@ -6,8 +6,8 @@ class LogicElement(ABC):
             self,
             num_inputs: int,
             num_outputs: int,
-            width: int = 4,
-            height: int = 3,
+            width: int = 7,
+            height: int = 6,
             name: str = "Element"
     ):
         self.num_inputs = num_inputs
@@ -116,6 +116,9 @@ class InputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=0, num_outputs=1, name="Input")
         self.output_values[0] = 0
+        self.height = 2
+        self.width = 8
+        self.set_output_port_name(0, "")
 
     def value(self):
         return self.output_values[0]
@@ -131,6 +134,9 @@ class OutputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=1, num_outputs=0, name="Output")
         self.value = 0
+        self.height = 2
+        self.width = 8
+        self.set_input_port_name(0, "")
 
     def compute_outputs(self):
         self.value = self.get_input_value(0)
@@ -158,7 +164,7 @@ class OrElement(LogicElement):
 
 class XorElement(LogicElement):
     def __init__(self):
-        super().__init__(num_inputs=2, num_outputs=1, name="Xor")
+        super().__init__(num_inputs=3, num_outputs=1, name="Xor")
 
     def compute_outputs(self):
         self.output_values[0] = 0 if (
@@ -168,7 +174,7 @@ class XorElement(LogicElement):
 
 class NotElement(LogicElement):
     def __init__(self):
-        super().__init__(num_inputs=1, num_outputs=1, name="Not")
+        super().__init__(num_inputs=4, num_outputs=1, name="Not")
 
     def compute_outputs(self):
         self.output_values[0] = 1 if (

@@ -43,7 +43,7 @@ class AbstractElementPainter(ABC):
 
             if port_name is not None:
                 painter.setPen(Qt.GlobalColor.black)
-                painter.drawText(x + 8, y - 8, port_name)
+                painter.drawText(x + 8, y + 4, port_name)
 
 
 class DefaultElementPainter(AbstractElementPainter):

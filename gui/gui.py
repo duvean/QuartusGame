@@ -63,10 +63,34 @@ class LogicElementItem(QGraphicsItem):
 
     def create_ports(self):
         ports = []
-        for i in range(self.logic_element.num_inputs):
-            ports.append((10, 10 + i * 15, 'input', i))
-        for i in range(self.logic_element.num_outputs):
-            ports.append((40, 10 + i * 15, 'output', i))
+
+        def get_centered_port_ys(num_ports, element_height):
+            total_height = element_height * CELL_SIZE
+
+            if num_ports == 0:
+                return []
+
+            if num_ports == 1:
+                return [total_height // 2]
+
+            # Расстояние не больше CELL_SIZE, но может быть меньше если высоты не хватает
+            max_total_spacing = total_height - CELL_SIZE  # минимум CELL_SIZE на 1 порт
+            spacing = min(CELL_SIZE, max_total_spacing // (num_ports - 1)) if num_ports > 1 else 0
+
+            group_height = spacing * (num_ports - 1)
+            start_y = (total_height - group_height) // 2
+
+            return [start_y + i * spacing for i in range(num_ports)]
+
+        input_ys = get_centered_port_ys(self.logic_element.num_inputs, self.logic_element.height)
+        output_ys = get_centered_port_ys(self.logic_element.num_outputs, self.logic_element.height)
+
+        for i, y in enumerate(input_ys):
+            ports.append((7, y, 'input', i))  # Слева
+
+        for i, y in enumerate(output_ys):
+            ports.append((self.logic_element.width * CELL_SIZE - 7, y, 'output', i))
+
         return ports
 
     def paint(self, painter: QPainter, option, widget):
@@ -160,7 +184,15 @@ class LogicGameScene(QGraphicsScene):
 
         proxy = QGraphicsProxyWidget(item)
         proxy.setWidget(button)
-        proxy.setPos(5, 35)
+
+        # Получим высоту кнопки после её размещения
+        button_height = button.sizeHint().height()
+
+        # Центрирование по высоте элемента
+        element_pixel_height = item.logic_element.height * CELL_SIZE
+        y = (element_pixel_height - button_height) // 2
+
+        proxy.setPos(5, y)
 
         def on_toggle():
             item.logic_element.set_value(1 if button.isChecked() else 0)
@@ -247,30 +279,8 @@ class LogicGameScene(QGraphicsScene):
     def mouseDoubleClickEvent(self, event):
         item = self.itemAt(event.scenePos(), QTransform())
         if isinstance(item, LogicElementItem):
-            # Получаем координаты в сцене
             scene_pos = item.scenePos() + QPointF(item.boundingRect().width() / 2, item.boundingRect().height() / 2)
-
-            # Создаем QLineEdit
-            view = self.views()[0]  # QGraphicsView
-            edit = QLineEdit(item.logic_element.name, view)
-            edit.move(view.mapFromScene(scene_pos))
-            edit.setFixedWidth(100)
-            edit.setFocus()
-            edit.selectAll()
-            edit.show()
-
-            def finish_editing():
-                new_name = edit.text().strip()
-                if new_name and new_name != item.logic_element.name:
-                    success = self._parent_ui.game_model.rename_element(item.logic_element, new_name)
-                    if success:
-                        self.update()
-                    else:
-                        QMessageBox.warning(view, "Ошибка", "Имя должно быть уникальным.")
-                edit.deleteLater()
-
-            edit.editingFinished.connect(finish_editing)
-            return
+            # Когда-нибудь пригодится
 
         super().mouseDoubleClickEvent(event)
 
@@ -279,8 +289,7 @@ class LogicGameScene(QGraphicsScene):
             if self.selected_element:
                 self.removeItem(self.selected_element)
                 self.remove_connections_of(self.selected_element.logic_element)
-                if self.selected_element.logic_element in self._parent_ui.game_model.grid.elements:
-                    self._parent_ui.game_model.grid.elements.remove(self.selected_element.logic_element)
+                self._parent_ui.game_model.remove_element(self.selected_element.logic_element)
                 self.selected_element = None
 
     def show_edit_dialog(self, item: LogicElementItem):
@@ -369,7 +378,7 @@ class LogicGameScene(QGraphicsScene):
                                 self.addItem(line)
                                 '''
                                 # Для ортогональных линий (работает, но пока некрасиво)
-                                x1 = element_item.scenePos().x() + 40
+                                x1 = element_item.scenePos().x() + element_item.logic_element.width * CELL_SIZE - 10
                                 y1 = element_item.scenePos().y() + 10 + output_index * 15
                                 x2 = other_item.scenePos().x() + 10
                                 y2 = other_item.scenePos().y() + 10 + target_port * 15
