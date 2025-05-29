@@ -178,6 +178,12 @@ class LogicGameScene(QGraphicsScene):
         self.selected_element = item
         item.is_selected = True
 
+    def delete_element(self, item: LogicElementItem):
+        self.removeItem(item)
+        self.remove_connections_of(item.logic_element)
+        self._parent_ui.game_model.remove_element(item.logic_element)
+        self.selected_element = None
+
     def mousePressEvent(self, event):
         item = self.itemAt(event.scenePos(), QTransform())
 
@@ -259,10 +265,7 @@ class LogicGameScene(QGraphicsScene):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Backspace:
             if self.selected_element:
-                self.removeItem(self.selected_element)
-                self.remove_connections_of(self.selected_element.logic_element)
-                self._parent_ui.game_model.remove_element(self.selected_element.logic_element)
-                self.selected_element = None
+                self.delete_element(self.selected_element)
 
     def show_edit_dialog(self, item: LogicElementItem):
         dialog = QDialog()
