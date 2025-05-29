@@ -55,6 +55,7 @@ class Grid:
 
         # Временно удаляем элемент
         self.elements.remove(element)
+        self.occupied_cells = self.get_occupied_cells()
         self.occupied_cells -= original_cells
 
         # Пробуем новую позицию
