@@ -6,8 +6,14 @@ from typing import List
 from .logic_elements import *
 
 class Level:
-    def __init__(self, truth_table: Dict[Tuple[int, ...], Tuple[int, ...]]):
+    def __init__(self,
+                 truth_table: Dict[Tuple[int, ...], Tuple[int, ...]],
+                 input_names: List[str],
+                 output_names: List[str]
+                 ):
         self.truth_table = truth_table
+        self.input_names = input_names
+        self.output_names = output_names
 
     def get_truth_table(self) -> Dict[Tuple[int, ...], Tuple[int, ...]]:
         return self.truth_table
@@ -141,9 +147,20 @@ class Grid:
 
         return {out: out.value for out in output_elements}
 
-    def auto_test(self) -> List[Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...]]]:
-        input_elements = self.get_input_elements()
-        output_elements = self.get_output_elements()
+    def auto_test(self) -> List[Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...] | Tuple[str, ...]]]:
+        if not self.level:
+            return []
+
+        input_elements_by_name = {e.name: e for e in self.get_input_elements()}
+        output_elements_by_name = {e.name: e for e in self.get_output_elements()}
+
+        try:
+            input_elements = [input_elements_by_name[name] for name in self.level.input_names]
+            output_elements = [output_elements_by_name[name] for name in self.level.output_names]
+        except KeyError:
+            # Не возвращаем ошибки — это обработает UI
+            return []
+
         errors = []
 
         for combo in itertools.product([0, 1], repeat=len(input_elements)):
@@ -155,7 +172,6 @@ class Grid:
 
             actual = self.compute_outputs(input_mapping)
             if actual is None:
-                # Цикл не стабилизировался
                 errors.append((combo, expected, ("Cycle",)))
                 continue
 

@@ -77,18 +77,29 @@ class TruthTableView(QTableWidget):
         super().__init__()
         self._truth_table = {}
 
-    def set_table(self, truth_table):
+    def set_table(self, truth_table, input_names=None, output_names=None):
         """Отображает таблицу истинности."""
         self._truth_table = truth_table
         self.clear()
-        self.setRowCount(len(truth_table))
-        self.setColumnCount(len(next(iter(truth_table))) + len(next(iter(truth_table.values()))))
+
+        if not truth_table:
+            self.setRowCount(0)
+            self.setColumnCount(0)
+            return
 
         input_count = len(next(iter(truth_table)))
-        self.setHorizontalHeaderLabels(
-            [f'In {i+1}' for i in range(input_count)] +
-            [f'Out {i+1}' for i in range(len(next(iter(truth_table.values()))))]
-        )
+        output_count = len(next(iter(truth_table.values())))
+
+        self.setRowCount(len(truth_table))
+        self.setColumnCount(input_count + output_count)
+
+        # Заголовки согласно названиям эл-в определённым в уровне
+        if input_names is None:
+            input_names = [f'In {i+1}' for i in range(input_count)]
+        if output_names is None:
+            output_names = [f'Out {i+1}' for i in range(output_count)]
+
+        self.setHorizontalHeaderLabels(input_names + output_names)
 
         for row_idx, (inputs, outputs) in enumerate(truth_table.items()):
             for col_idx, val in enumerate(inputs + outputs):
@@ -445,7 +456,12 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(self.toolbox)
 
         self.truth_table_view = TruthTableView()
-        self.truth_table_view.set_table(self.game_model.current_level.get_truth_table())
+        level = self.game_model.current_level
+        self.truth_table_view.set_table(
+            level.truth_table,
+            input_names=level.input_names,
+            output_names=level.output_names
+        )
         side_panel.addWidget(self.truth_table_view)
 
         self.test_button = QPushButton("Проверить уровень")
@@ -481,23 +497,42 @@ class LogicGameUI(QMainWindow):
             self.scene.addItem(item)
 
     def check_level(self):
-        errors = self.game_model.check_level()
-
         if not self.game_model.current_level:
             print("Уровень не загружен.")
             return
-        elif not self.game_model.grid.is_valid_circuit():
+
+        if not self.game_model.grid.is_valid_circuit():
             print("Схема не собрана.")
             self.truth_table_view.reset_highlight()
             return
 
+        level = self.game_model.current_level
+        input_names = level.input_names
+        output_names = level.output_names
+
+        available_inputs = {e.name for e in self.game_model.grid.get_input_elements()}
+        available_outputs = {e.name for e in self.game_model.grid.get_output_elements()}
+
+        missing_inputs = [name for name in input_names if name not in available_inputs]
+        missing_outputs = [name for name in output_names if name not in available_outputs]
+
+        if missing_inputs or missing_outputs:
+            print("Отсутствующие элементы схемы (проверьте корректность названий):")
+            if missing_inputs:
+                print(f"  Входы: {', '.join(missing_inputs)}")
+            if missing_outputs:
+                print(f"  Выходы: {', '.join(missing_outputs)}")
+            self.truth_table_view.reset_highlight()
+            return
+
+        errors = self.game_model.check_level()
+
         if errors:
             print("Ошибки в схеме:", errors)
-            # Передаём индексы строк с ошибками
             self.truth_table_view.highlight_errors(errors)
         else:
             print("Уровень пройден!")
-            self.truth_table_view.reset_highlight()  # Убираем подсветку
+            self.truth_table_view.reset_highlight()
 
 
 class MainMenuWidget(QWidget):
