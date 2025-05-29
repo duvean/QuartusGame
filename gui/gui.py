@@ -194,10 +194,13 @@ class LogicGameScene(QGraphicsScene):
                 # Контекстное меню
                 menu = QMenu()
                 edit_action = menu.addAction("Редактировать")
+                delete_action = menu.addAction("Удалить")
                 action = menu.exec(event.screenPos())
 
                 if action == edit_action:
                     self.show_edit_dialog(item)
+                elif action == delete_action:
+                    self.delete_element(item)
                 return
 
             for x, y, port_type, port_index in item.ports:
