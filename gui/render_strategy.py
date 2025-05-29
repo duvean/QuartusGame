@@ -70,7 +70,7 @@ class AbstractElementPainter(ABC):
                 painter.drawText(QPointF(x + 8, y + 4), port_name)
 
 
-class DefaultRednerStrategy(AbstractElementPainter):
+class DefaultElementPainter(AbstractElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         # Внешний прямоугольник
         painter.setBrush(QBrush(QColor(240, 240, 255)))
@@ -166,7 +166,7 @@ class PrimitiveElementPainter(AbstractElementPainter):
         return ports
 
 
-class InOutRenderStrategy(PrimitiveElementPainter):
+class InOutElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
@@ -176,7 +176,7 @@ class InOutRenderStrategy(PrimitiveElementPainter):
         self.paint_ports(painter, element, game_item)
 
 
-class AndRenderStrategy(PrimitiveElementPainter):
+class AndElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
@@ -186,7 +186,7 @@ class AndRenderStrategy(PrimitiveElementPainter):
         self.paint_ports(painter, element, game_item)
 
 
-class OrRenderStrategy(PrimitiveElementPainter):
+class OrElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
@@ -196,7 +196,7 @@ class OrRenderStrategy(PrimitiveElementPainter):
         self.paint_ports(painter, element, game_item)
 
 
-class NotRenderStrategy(PrimitiveElementPainter):
+class NotElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
@@ -206,7 +206,7 @@ class NotRenderStrategy(PrimitiveElementPainter):
         self.paint_ports(painter, element, game_item)
 
 
-class XorRenderStrategy(PrimitiveElementPainter):
+class XorElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
@@ -217,14 +217,14 @@ class XorRenderStrategy(PrimitiveElementPainter):
 
 
 painter_registry = {
-    InputElement: InOutRenderStrategy(),
-    OutputElement: InOutRenderStrategy(),
-    AndElement: AndRenderStrategy(),
-    OrElement: OrRenderStrategy(),
-    NotElement: NotRenderStrategy(),
-    XorElement: XorRenderStrategy(),
+    InputElement: InOutElementPainter(),
+    OutputElement: InOutElementPainter(),
+    AndElement: AndElementPainter(),
+    OrElement: OrElementPainter(),
+    NotElement: NotElementPainter(),
+    XorElement: XorElementPainter(),
 }
-default_painter = DefaultRednerStrategy()
+default_painter = DefaultElementPainter()
 
 def get_render_strategy_for(element):
     return painter_registry.get(type(element), default_painter)

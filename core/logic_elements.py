@@ -83,14 +83,12 @@ class LogicElement(ABC):
 
     def disconnect_port(self, port_type, port_index):
         if port_type == "input":
-            # Удалить все входные соединения для данного порта
             for source, source_output_index in self.input_connections[port_index]:
                 source.output_connections[source_output_index] = [
                     (t, tp) for (t, tp) in source.output_connections[source_output_index]
                     if not (t is self and tp == port_index)
                 ]
             self.input_connections[port_index].clear()
-
 
         elif port_type == "output":
             for target, target_port in self.output_connections[port_index]:

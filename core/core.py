@@ -5,10 +5,31 @@ from typing import List
 
 from .logic_elements import *
 
+class Level:
+    def __init__(self, truth_table: Dict[Tuple[int, ...], Tuple[int, ...]]):
+        self.truth_table = truth_table
+
+    def get_truth_table(self) -> Dict[Tuple[int, ...], Tuple[int, ...]]:
+        return self.truth_table
+
+
 class Grid:
-    def __init__(self):
+    def __init__(self, level: Level):
+        self.level = level
         self.elements: List[LogicElement] = []
         self.occupied_cells: Set[Tuple[int, int]] = set()
+
+    def get_input_elements(self) -> List[InputElement]:
+        return [e for e in self.elements if isinstance(e, InputElement)]
+
+    def get_input_names(self) -> List[str]:
+        return [e.name for e in self.elements if isinstance(e, InputElement)]
+
+    def get_output_elements(self) -> List[OutputElement]:
+        return [e for e in self.elements if isinstance(e, OutputElement)]
+
+    def get_output_names(self) -> List[str]:
+        return [e.name for e in self.elements if isinstance(e, OutputElement)]
 
     def get_occupied_cells(self) -> Set[Tuple[int, int]]:
         return set().union(*[elem.occupied_cells for elem in self.elements])
@@ -96,30 +117,6 @@ class Grid:
 
         return all(out in visited for out in output_elements)
 
-
-class Level:
-    def __init__(self, grid: Grid, truth_table: Dict[Tuple[int, ...], Tuple[int, ...]]):
-        self.grid = grid
-        self.truth_table = truth_table
-
-    def get_input_elements(self) -> List[InputElement]:
-        return [e for e in self.grid.elements if isinstance(e, InputElement)]
-
-    def get_input_names(self) -> List[str]:
-        return [e.name for e in self.grid.elements if isinstance(e, InputElement)]
-
-    def get_output_elements(self) -> List[OutputElement]:
-        return [e for e in self.grid.elements if isinstance(e, OutputElement)]
-
-    def get_output_names(self) -> List[str]:
-        return [e.name for e in self.grid.elements if isinstance(e, OutputElement)]
-
-    def get_truth_table(self) -> Dict[Tuple[int, ...], Tuple[int, ...]]:
-        return self.truth_table
-
-    def is_valid_circuit(self) -> bool:
-        return self.grid.is_valid_circuit()
-
     def compute_outputs(self, input_values: Dict[InputElement, int], max_iterations: int = 10) -> Optional[Dict[OutputElement, int]]:
         for inp, val in input_values.items():
             inp.set_value(val)
@@ -128,7 +125,7 @@ class Level:
         previous_values = {out: None for out in output_elements}
 
         for _ in range(max_iterations):
-            for element in self.grid.elements:
+            for element in self.elements:
                 element.compute_outputs()
 
             stable = True
@@ -151,7 +148,7 @@ class Level:
 
         for combo in itertools.product([0, 1], repeat=len(input_elements)):
             input_mapping = {inp: combo[i] for i, inp in enumerate(input_elements)}
-            expected = self.truth_table.get(combo, None)
+            expected = self.level.truth_table.get(combo, None)
 
             if expected is None:
                 continue
@@ -171,18 +168,12 @@ class Level:
 
 class GameModel:
     def __init__(self, level: Level):
-        self.grid = level.grid
+        self.grid = Grid(level)
         self.current_level = level
         self.selected_element_type: Optional[type] = None
         self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, CustomElement]
         self.name_counter = defaultdict(int)
         self.existing_names = set()
-
-    def start_level(self, level_index: int):
-        """Загружает указанный уровень"""
-        if 0 <= level_index < len(self.levels):
-            self.current_level = self.levels[level_index]
-            self.grid = self.current_level.grid
 
     def create_element(self, element_type: type) -> Optional[LogicElement]:
         """Создает новый элемент (без размещения на поле)"""
@@ -241,13 +232,13 @@ class GameModel:
     def run_auto_test(self) -> List[Tuple]:
         """Запускает автоматическое тестирование схемы"""
         if self.current_level:
-            return self.current_level.auto_test()
+            return self.grid.auto_test()
         return []
 
     def is_level_passed(self) -> bool:
         return self.current_level is not None \
-            and self.current_level.is_valid_circuit() \
-            and len(self.current_level.auto_test()) == 0
+            and self.grid.is_valid_circuit() \
+            and len(self.grid.auto_test()) == 0
 
     def check_level(self) -> List[Tuple]:
         """
@@ -257,9 +248,8 @@ class GameModel:
             - Пустой список, если схема корректна и проходит тест;
             - Список ошибок, если есть ошибки.
         """
-        level = self.current_level
-        if not level or not level.is_valid_circuit():
+        if not self.current_level or not self.grid.is_valid_circuit():
             return []
 
-        errors = level.auto_test()
+        errors = self.grid.auto_test()
         return errors

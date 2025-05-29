@@ -327,13 +327,13 @@ class LogicGameScene(QGraphicsScene):
         self.update_connections()
 
     def update_outputs(self):
-        level = self._parent_ui.game_model.current_level
-        if level:
+        grid = self._parent_ui.game_model.grid
+        if grid:
             input_values = {
                 inp: inp.value()
-                for inp in level.get_input_elements()
+                for inp in grid.get_input_elements()
             }
-            level.compute_outputs(input_values)
+            grid.compute_outputs(input_values)
 
     def update_connections(self):
         for conn in self.connections:
@@ -376,7 +376,6 @@ class LogicGameScene(QGraphicsScene):
                             path_item.setPen(QPen(Qt.GlobalColor.black, 2))
                             self.connections.append(path_item)
                             self.addItem(path_item)
-
 
 
 class LogicGameUI(QMainWindow):
@@ -446,7 +445,7 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(self.toolbox)
 
         self.truth_table_view = TruthTableView()
-        self.truth_table_view.set_table(self.game_model.current_level.truth_table)
+        self.truth_table_view.set_table(self.game_model.current_level.get_truth_table())
         side_panel.addWidget(self.truth_table_view)
 
         self.test_button = QPushButton("Проверить уровень")
@@ -487,7 +486,7 @@ class LogicGameUI(QMainWindow):
         if not self.game_model.current_level:
             print("Уровень не загружен.")
             return
-        elif not self.game_model.current_level.is_valid_circuit():
+        elif not self.game_model.grid.is_valid_circuit():
             print("Схема не собрана.")
             self.truth_table_view.reset_highlight()
             return

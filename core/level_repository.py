@@ -4,23 +4,21 @@ def get_all_levels():
     levels = []
 
     # Уровень 1
-    level1_grid = Grid()
-    truth_table = {
+    truth_table1 = {
         (0, 0): (0,),
         (0, 1): (0,),
         (1, 0): (0,),
         (1, 1): (1,)
     }
-    levels.append(Level(level1_grid, truth_table))
+    levels.append(Level(truth_table1))
 
     # Уровень 2
-    level2_grid = Grid()
-    truth_table = {
+    truth_table2 = {
         (0, 0): (0,),
         (0, 1): (1,),
         (1, 0): (1,),
         (1, 1): (1,)
     }
-    levels.append(Level(level2_grid, truth_table))
+    levels.append(Level(truth_table2))
 
     return levels
