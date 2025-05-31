@@ -2,7 +2,7 @@ import itertools
 import json
 import math
 import os
-from typing import Tuple, Set, Dict, List
+from typing import Tuple, Set, Dict, List, Optional
 
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
@@ -415,6 +415,7 @@ class LogicGameUI(QMainWindow):
         self.selected_element_type = None
         self.selected_port = None
         self.is_menu_expanded = False
+        self.tab_metadata = {}
         self.init_ui()
 
     def init_ui(self):
@@ -476,9 +477,14 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(QLabel("Элементы:"))
         side_panel.addWidget(self.toolbox)
 
-        self.save_button = QPushButton("Сохранить как элемент")
-        self.save_button.clicked.connect(self.save_as_custom_element)
-        side_panel.addWidget(self.save_button)
+        self.new_element_button = QPushButton("Новый элемент")
+        self.new_element_button.clicked.connect(self.create_new_custom_element)
+
+        self.save_element_button = QPushButton("Сохранить")
+        self.save_element_button.clicked.connect(self.save_custom_element)
+
+        side_panel.addWidget(self.new_element_button)
+        side_panel.addWidget(self.save_element_button)
 
         self.truth_table_view = TruthTableView()
         level = self.game_model.current_level
@@ -563,28 +569,57 @@ class LogicGameUI(QMainWindow):
             else:
                 QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
 
-    def save_as_custom_element(self):
-        name, ok = QInputDialog.getText(self, "Название элемента", "Введите название:")
-        if not ok or not name:
+    def refresh_toolbox(self):
+        self.toolbox.clear()
+        for element_type in self.game_model.toolbox:
+            self.toolbox.addItem(element_type.__name__)
+
+    def create_new_custom_element(self):
+        name, ok = QInputDialog.getText(self, "Новый элемент", "Введите название элемента:")
+        if not ok or not name.strip():
             return
 
-        # Сохраняем grid как словарь
-        grid_dict = self.game_model.grid.to_dict()
+        name = name.strip()
 
-        # Путь к файлу
+        # Проверим на уникальность
+        if any(cls.__name__ == name for cls in self.game_model.toolbox):
+            QMessageBox.warning(self, "Ошибка", "Элемент с таким именем уже существует.")
+            return
+
+        # Создаём новый пустой grid и сцену
+        grid = Grid()
+        self.add_new_scene_tab(f"Новый: {name}", grid, element_name=name)
+
+    def save_custom_element(self):
+        index = self.tab_widget.currentIndex()
+        if index == -1:
+            QMessageBox.warning(self, "Нет сцены", "Нет открытой сцены для сохранения.")
+            return
+        metadata = self.tab_metadata.get(index)
+        if not metadata or not metadata.get("element_name"):
+            QMessageBox.warning(self, "Нельзя сохранить", "Эта вкладка не является пользовательским элементом.")
+            return
+
+        name = metadata["element_name"]
+        grid = metadata["grid"]
+        grid_dict = grid.to_dict()
+
         os.makedirs(USER_ELEMENTS_DIR, exist_ok=True)
         filepath = os.path.join(USER_ELEMENTS_DIR, f"{name}.json")
 
-        # Сохраняем в файл
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(grid_dict, f, indent=2)
+        try:
+            with open(filepath, "w", encoding="utf-8") as f:
+                json.dump(grid_dict, f, indent=2)
+                # Перегружаем только что сохранённый элемент
+                new_class = make_custom_element_class(name, grid_dict)
 
-        # Генерируем класс кастомного элемента
-        custom_class = make_custom_element_class(name, grid_dict)
+                # Если элемента ещё нет в тулбоксе — добавляем
+                if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
+                    self.game_model.toolbox.append(new_class)
+                    self.toolbox.addItem(new_class.__name__)
 
-        # Добавляем в тулбокс и список
-        self.game_model.toolbox.append(custom_class)
-        self.toolbox.addItem(custom_class.__name__)
+        except Exception as e:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить элемент: {e}")
 
     def delete_custom_element(self, name: str):
         # Удаляем из модели
@@ -606,13 +641,22 @@ class LogicGameUI(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл:\n{e}")
 
-    def add_new_scene_tab(self, title: str, grid: Grid):
+    def add_new_scene_tab(self, name: str, grid: Grid, element_name: Optional[str] = None):
         scene = LogicGameScene(grid)
         scene.set_parent_ui(self)
+
         view = QGraphicsView(scene)
         view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.tab_widget.addTab(view, title)
-        self.tab_widget.setCurrentWidget(view)
+
+        index = self.tab_widget.addTab(view, name)
+        self.tab_widget.setCurrentIndex(index)
+
+        # Сохраняем метаданные
+        self.tab_metadata[index] = {
+            "scene": scene,
+            "grid": grid,
+            "element_name": element_name
+        }
 
     def check_level(self):
         if not self.game_model.current_level:
