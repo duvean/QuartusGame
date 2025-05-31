@@ -200,3 +200,4 @@ class CustomElement(LogicElement):
         self.output_values[0] = 1 if (
                 self.get_input_value(0) == 0
         ) else 0
+

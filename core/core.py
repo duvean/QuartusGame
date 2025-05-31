@@ -1,9 +1,10 @@
-from collections import deque, defaultdict
 import itertools
+from collections import deque, defaultdict
 from operator import truth
 from typing import List
 
 from .logic_elements import *
+from .custom_element_factory import make_custom_element_class
 
 class Level:
     def __init__(self,
@@ -180,6 +181,77 @@ class Grid:
                 errors.append((combo, expected, actual_values))
 
         return errors
+
+    def to_dict(self):
+        return {
+            "elements": [
+                {
+                    "type": e.__class__.__name__,
+                    "name": e.name,
+                    "position": e.position,
+                    "input_names": e.input_names,
+                    "output_names": e.output_names,
+                    "subgrid": e._subgrid.to_dict() if hasattr(e, "_subgrid") else None
+                }
+                for e in self.elements
+            ],
+            "connections": [
+                {
+                    "source": (self.elements.index(src), src_idx),
+                    "target": (self.elements.index(trg), trg_idx)
+                }
+                for src in self.elements
+                for src_idx, conns in enumerate(src.output_connections)
+                for trg, trg_idx in conns
+            ]
+        }
+
+    def load_from_dict(self, data):
+        self.elements.clear()
+        type_map = {
+            "InputElement": InputElement,
+            "OutputElement": OutputElement,
+            "AndElement": AndElement,
+            "OrElement": OrElement,
+            "NotElement": NotElement,
+            "XorElement": XorElement,
+            # кастомные — добавим ниже
+        }
+
+        custom_classes = {}
+
+        # 1. Загружаем элементы
+        for elem_data in data["elements"]:
+            elem_type = elem_data["type"]
+            subgrid_data = elem_data.get("subgrid")
+
+            if subgrid_data:
+                # Создаём вложенный кастомный класс, если не существует
+                if elem_type not in custom_classes:
+                    CustomClass = make_custom_element_class(elem_type, subgrid_data)
+                    type_map[elem_type] = CustomClass
+                    custom_classes[elem_type] = CustomClass
+                cls = custom_classes[elem_type]
+            else:
+                cls = type_map.get(elem_type)
+
+            if not cls:
+                continue
+
+            element = cls()
+            element.name = elem_data["name"]
+            element.position = tuple(elem_data["position"])
+            element.input_names = elem_data["input_names"]
+            element.output_names = elem_data["output_names"]
+
+            self.elements.append(element)
+
+        # 2. Загружаем соединения
+        for conn in data["connections"]:
+            src_idx, src_port = conn["source"]
+            trg_idx, trg_port = conn["target"]
+            if src_idx < len(self.elements) and trg_idx < len(self.elements):
+                self.elements[src_idx].connect_output(src_port, self.elements[trg_idx], trg_port)
 
 
 class GameModel:

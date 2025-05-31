@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
-from core import InputElement, GameModel
+from core import InputElement, GameModel, Grid, Level, LogicElement, make_custom_element_class
 from core.level_repository import get_all_levels
 from .render_strategy import get_render_strategy_for
 
@@ -455,6 +455,10 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(QLabel("Элементы:"))
         side_panel.addWidget(self.toolbox)
 
+        self.save_button = QPushButton("Сохранить как элемент")
+        self.save_button.clicked.connect(self.save_as_custom_element)
+        side_panel.addWidget(self.save_button)
+
         self.truth_table_view = TruthTableView()
         level = self.game_model.current_level
         self.truth_table_view.set_table(
@@ -489,6 +493,13 @@ class LogicGameUI(QMainWindow):
             if element_type.__name__ == element_name:
                 self.selected_element_type = element_type
                 break
+
+    def save_as_custom_element(self):
+        data = self.game_model.grid.to_dict()
+        name = f"Custom{len(self.game_model.toolbox)}"
+        CustomElementClass = make_custom_element_class(name, data)
+        self.game_model.toolbox.append(CustomElementClass)
+        self.toolbox.addItem(CustomElementClass.__name__)
 
     def add_element_to_scene(self, element_type, x, y):
         element = self.game_model.create_element(element_type)
