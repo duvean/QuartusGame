@@ -9,10 +9,11 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
     QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
-from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
+from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal, QPoint
 
 from core import InputElement, GameModel, Grid, Level, LogicElement, make_custom_element_class
 from core.level_repository import get_all_levels
+from tests.test_core import model
 from .render_strategy import get_render_strategy_for
 
 CELL_SIZE = 15
@@ -137,9 +138,10 @@ class TruthTableView(QTableWidget):
 
 
 class LogicGameScene(QGraphicsScene):
-    def __init__(self):
+    def __init__(self, grid: Grid):
         super().__init__()
         self.setSceneRect(0, 0, 700, 700)
+        self.grid = grid
         self._parent_ui = None
         self.selected_port = None
         self.selected_element = None
@@ -195,7 +197,7 @@ class LogicGameScene(QGraphicsScene):
     def delete_element(self, item: LogicElementItem):
         self.removeItem(item)
         self.remove_connections_of(item.logic_element)
-        self._parent_ui.game_model.remove_element(item.logic_element)
+        self.grid.remove_element(item.logic_element)
         self.selected_element = None
 
     def mousePressEvent(self, event):
@@ -262,8 +264,8 @@ class LogicGameScene(QGraphicsScene):
                 x = math.floor(scene_pos.x() / CELL_SIZE) * CELL_SIZE
                 y = math.floor(scene_pos.y() / CELL_SIZE) * CELL_SIZE
                 element_type = self._parent_ui.selected_element_type
-                element = self._parent_ui.game_model.create_element(element_type)
-                if self._parent_ui.game_model.place_element(element, x // CELL_SIZE, y // CELL_SIZE):
+                element = self.grid.create_element(element_type)
+                if self.grid.add_element(element, x // CELL_SIZE, y // CELL_SIZE):
                     item = LogicElementItem(element, x, y)
                     self.addItem(item)
             else:
@@ -315,7 +317,7 @@ class LogicGameScene(QGraphicsScene):
             # Применяем изменения
             new_name = name_edit.text().strip()
             if new_name != item.logic_element.name:
-                success = self._parent_ui.game_model.rename_element(item.logic_element, new_name)
+                success = self.grid.rename_element(item.logic_element, new_name)
                 if not success:
                     QMessageBox.warning(None, "Ошибка", "Имя должно быть уникальным.")
                     return
@@ -341,13 +343,12 @@ class LogicGameScene(QGraphicsScene):
         self.update_connections()
 
     def update_outputs(self):
-        grid = self._parent_ui.game_model.grid
-        if grid:
+        if self.grid:
             input_values = {
                 inp: inp.value()
-                for inp in grid.get_input_elements()
+                for inp in self.grid.get_input_elements()
             }
-            grid.compute_outputs(input_values)
+            self.grid.compute_outputs(input_values)
 
     def update_connections(self):
         for conn in self.connections:
@@ -441,8 +442,9 @@ class LogicGameUI(QMainWindow):
         main_layout.addWidget(self.side_menu)
 
         # === ЦЕНТРАЛЬНАЯ ЧАСТЬ — ГРАФИЧЕСКОЕ ПОЛЕ ===
-        self.scene = LogicGameScene()
+        self.scene = LogicGameScene(self.game_model.grid)
         self.scene.set_parent_ui(self)
+        self.scene.grid.set_level(self.game_model.current_level)
 
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -452,6 +454,8 @@ class LogicGameUI(QMainWindow):
         side_panel = QVBoxLayout()
 
         self.toolbox = QListWidget()
+        self.toolbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.toolbox.customContextMenuRequested.connect(self.show_toolbox_context_menu)
         for element_type in self.game_model.toolbox:
             self.toolbox.addItem(element_type.__name__)
         self.toolbox.itemClicked.connect(self.select_element)
@@ -497,6 +501,36 @@ class LogicGameUI(QMainWindow):
                 self.selected_element_type = element_type
                 break
 
+    def show_toolbox_context_menu(self, position: QPoint):
+        item = self.toolbox.itemAt(position)
+        if item is None:
+            return
+
+        element_name = item.text()
+        file_path = os.path.join("user_elements", f"{element_name}.json")
+
+        menu = QMenu()
+        delete_action = menu.addAction("Удалить")
+
+        action = menu.exec(self.toolbox.viewport().mapToGlobal(position))
+        if action == delete_action:
+            if not os.path.isfile(file_path):
+                QMessageBox.information(
+                    self,
+                    "Удаление запрещено",
+                    f"Элемент '{element_name}' является встроенным и не может быть удалён."
+                )
+                return
+
+            confirm = QMessageBox.question(
+                self,
+                "Подтверждение удаления",
+                f"Удалить кастомный элемент '{element_name}'?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if confirm == QMessageBox.StandardButton.Yes:
+                self.delete_custom_element(element_name)
+
     def save_as_custom_element(self):
         name, ok = QInputDialog.getText(self, "Название элемента", "Введите название:")
         if not ok or not name:
@@ -519,6 +553,26 @@ class LogicGameUI(QMainWindow):
         # Добавляем в тулбокс и список
         self.game_model.toolbox.append(custom_class)
         self.toolbox.addItem(custom_class.__name__)
+
+    def delete_custom_element(self, name: str):
+        # Удаляем из модели
+        self.game_model.toolbox = [
+            cls for cls in self.game_model.toolbox if cls.__name__ != name
+        ]
+
+        # Удаляем из QListWidget
+        items = self.toolbox.findItems(name, Qt.MatchFlag.MatchExactly)
+        for item in items:
+            row = self.toolbox.row(item)
+            self.toolbox.takeItem(row)
+
+        # Удаляем json-файл
+        path = os.path.join("user_elements", f"{name}.json")
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception as e:
+                QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл:\n{e}")
 
     def add_element_to_scene(self, element_type, x, y):
         element = self.game_model.create_element(element_type)

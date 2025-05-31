@@ -25,10 +25,15 @@ class Level:
 
 
 class Grid:
-    def __init__(self, level: Level):
-        self.level = level
+    def __init__(self):
+        self.level = None
         self.elements: List[LogicElement] = []
         self.occupied_cells: Set[Tuple[int, int]] = set()
+        self.name_counter = defaultdict(int)
+        self.existing_names = set()
+
+    def set_level(self, level: Level) -> None:
+        self.level = level
 
     def get_input_elements(self) -> List[InputElement]:
         return [e for e in self.elements if isinstance(e, InputElement)]
@@ -44,6 +49,19 @@ class Grid:
 
     def get_occupied_cells(self) -> Set[Tuple[int, int]]:
         return set().union(*[elem.occupied_cells for elem in self.elements])
+
+    def generate_unique_name(self, base):
+        while True:
+            self.name_counter[base] += 1
+            candidate = f"{base}_{self.name_counter[base]}"
+            if candidate not in self.existing_names:
+                self.existing_names.add(candidate)
+                return candidate
+
+    def create_element(self, element_type: type) -> LogicElement:
+        new_element = element_type()
+        new_element.name = self.generate_unique_name(new_element.name)
+        return new_element
 
     def add_element(self, element: LogicElement, x: int, y: int) -> bool:
         if element.position is not None:
@@ -63,6 +81,7 @@ class Grid:
     def remove_element(self, element: LogicElement) -> bool:
         if element.position is not None:
             element.position = None
+            self.existing_names.discard(element.name)
             self.elements.remove(element)
             return True
         return False
@@ -76,6 +95,14 @@ class Grid:
                     ey <= y < ey + elem.height):
                 return elem
         return None
+
+    def rename_element(self, element: LogicElement, new_name: str) -> bool:
+        if new_name in self.existing_names:
+            return False
+        self.existing_names.discard(element.name)
+        element.name = new_name
+        self.existing_names.add(new_name)
+        return True
 
     def move_element(self, element, new_x: int, new_y: int) -> bool:
         if element not in self.elements:
@@ -260,12 +287,10 @@ class Grid:
 
 class GameModel:
     def __init__(self, level: Level):
-        self.grid = Grid(level)
+        self.grid = Grid()
         self.current_level = level
         self.selected_element_type: Optional[type] = None
-        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, CustomElement]
-        self.name_counter = defaultdict(int)
-        self.existing_names = set()
+        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement]
         self.load_user_elements()
 
     def load_user_elements(self):
@@ -285,40 +310,11 @@ class GameModel:
                 except Exception as e:
                     print(f"Не удалось загрузить {filename}: {e}")
 
-    def create_element(self, element_type: type) -> Optional[LogicElement]:
-        """Создает новый элемент (без размещения на поле)"""
-        if element_type in self.toolbox:
-            new_element = element_type()
-            new_element.name = self.generate_unique_name(new_element.name)
-            return new_element
-        return None
 
-    def generate_unique_name(self, base):
-        while True:
-            self.name_counter[base] += 1
-            candidate = f"{base}_{self.name_counter[base]}"
-            if candidate not in self.existing_names:
-                self.existing_names.add(candidate)
-                return candidate
-
-    def rename_element(self, element: LogicElement, new_name: str) -> bool:
-        if new_name in self.existing_names:
-            return False
-        self.existing_names.discard(element.name)
-        element.name = new_name
-        self.existing_names.add(new_name)
-        return True
 
     def place_element(self, element: LogicElement, x: int, y: int) -> bool:
         """Пытается разместить элемент на поле"""
         return self.grid.add_element(element, x, y)
-
-    def remove_element(self, element: LogicElement) -> bool:
-        """Удаляет элемент с поля"""
-        if self.grid.remove_element(element):
-            self.existing_names.discard(element.name)
-            return True
-        return False
 
     def get_element_at(self, x: int, y: int) -> Optional[LogicElement]:
         """Возвращает элемент в указанной позиции"""

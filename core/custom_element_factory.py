@@ -7,7 +7,7 @@ def make_custom_element_class(class_name: str, grid_data: dict):
     class CustomElement(LogicElement):
         def __init__(self):
             # Определим количество входов и выходов по числу Input/OutputElement
-            subgrid = Grid(None)
+            subgrid = Grid()
             subgrid.load_from_dict(grid_data)
 
             input_count = sum(1 for e in subgrid.elements if e.__class__.__name__ == "InputElement")
