@@ -310,20 +310,6 @@ class GameModel:
                 except Exception as e:
                     print(f"Не удалось загрузить {filename}: {e}")
 
-
-
-    def place_element(self, element: LogicElement, x: int, y: int) -> bool:
-        """Пытается разместить элемент на поле"""
-        return self.grid.add_element(element, x, y)
-
-    def get_element_at(self, x: int, y: int) -> Optional[LogicElement]:
-        """Возвращает элемент в указанной позиции"""
-        return self.grid.get_element_at(x, y)
-
-    def get_occupied_cells(self) -> Set[Tuple[int, int]]:
-        """Возвращает занятые ячейки"""
-        return self.grid.get_occupied_cells()
-
     @staticmethod
     def connect_elements(source: LogicElement, source_port: int,
                          target: LogicElement, target_port: int) -> bool:

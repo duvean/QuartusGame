@@ -7,7 +7,7 @@ from typing import Tuple, Set, Dict, List
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog
+    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog, QTabWidget
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal, QPoint
 
@@ -49,8 +49,7 @@ class LogicElementItem(QGraphicsItem):
 
             # Проверка — можно ли туда поставить элемент?
             if self.scene() and hasattr(self.scene(), "parent") and self.scene().parent():
-                model = self.scene().parent().game_model
-                success = model.grid.move_element(self.logic_element, snapped_x, snapped_y)
+                success = self.scene().grid.move_element(self.logic_element, snapped_x, snapped_y)
                 if success:
                     return snapped_pos
                 else:
@@ -147,6 +146,8 @@ class LogicGameScene(QGraphicsScene):
         self.selected_element = None
         self.connections = []
         self.draw_grid()
+        self.render_elements()
+        self.update_connections()
 
     def set_parent_ui(self, ui):
         self._parent_ui = ui
@@ -160,6 +161,18 @@ class LogicGameScene(QGraphicsScene):
         for x in range(0, int(self.width()), CELL_SIZE):
             for y in range(0, int(self.height()), CELL_SIZE):
                 self.addEllipse(x, y, 1, 1, dot_pen)
+
+    def render_elements(self):
+        # Удаляем старые визуальные элементы
+        for item in self.items():
+            if isinstance(item, LogicElementItem):
+                self.removeItem(item)
+
+        # Добавляем новые
+        for element in self.grid.elements:
+            x, y = element.position
+            item = LogicElementItem(element, x * CELL_SIZE, y * CELL_SIZE)
+            self.addItem(item)
 
     def addItem(self, item: QGraphicsItem):
         super().addItem(item)
@@ -446,9 +459,10 @@ class LogicGameUI(QMainWindow):
         self.scene.set_parent_ui(self)
         self.scene.grid.set_level(self.game_model.current_level)
 
-        self.view = QGraphicsView(self.scene)
-        self.view.setRenderHint(QPainter.RenderHint.Antialiasing)
-        main_layout.addWidget(self.view, stretch=3)
+        self.tab_widget = QTabWidget()
+        main_layout.addWidget(self.tab_widget, stretch=3)
+        self.tabs: List[Tuple[LogicGameScene, QGraphicsView]] = []
+        self.add_new_scene_tab("Игровое поле", self.game_model.grid)
 
         # === ПРАВАЯ ЧАСТЬ — ПАНЕЛЬ ЭЛЕМЕНТОВ ===
         side_panel = QVBoxLayout()
@@ -510,6 +524,7 @@ class LogicGameUI(QMainWindow):
         file_path = os.path.join("user_elements", f"{element_name}.json")
 
         menu = QMenu()
+        edit_action = menu.addAction("Редактировать")
         delete_action = menu.addAction("Удалить")
 
         action = menu.exec(self.toolbox.viewport().mapToGlobal(position))
@@ -530,6 +545,23 @@ class LogicGameUI(QMainWindow):
             )
             if confirm == QMessageBox.StandardButton.Yes:
                 self.delete_custom_element(element_name)
+
+        elif action == edit_action:
+            element_name = item.text()
+            json_path = os.path.join("user_elements", f"{element_name}.json")
+
+            if os.path.exists(json_path):
+                with open(json_path, "r", encoding="utf-8") as f:
+                    try:
+                        data = json.load(f)
+                        # Пытаемся загрузить весь JSON напрямую как Grid
+                        grid = Grid()
+                        grid.load_from_dict(data)
+                        self.add_new_scene_tab(f"Редакт: {element_name}", grid)
+                    except Exception as e:
+                        QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
+            else:
+                QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
 
     def save_as_custom_element(self):
         name, ok = QInputDialog.getText(self, "Название элемента", "Введите название:")
@@ -574,11 +606,13 @@ class LogicGameUI(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл:\n{e}")
 
-    def add_element_to_scene(self, element_type, x, y):
-        element = self.game_model.create_element(element_type)
-        if self.game_model.place_element(element, x // CELL_SIZE, y // CELL_SIZE):
-            item = LogicElementItem(element, x, y)
-            self.scene.addItem(item)
+    def add_new_scene_tab(self, title: str, grid: Grid):
+        scene = LogicGameScene(grid)
+        scene.set_parent_ui(self)
+        view = QGraphicsView(scene)
+        view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.tab_widget.addTab(view, title)
+        self.tab_widget.setCurrentWidget(view)
 
     def check_level(self):
         if not self.game_model.current_level:
