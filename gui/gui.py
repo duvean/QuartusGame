@@ -1,11 +1,13 @@
 import itertools
+import json
 import math
+import os
 from typing import Tuple, Set, Dict, List
 
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout
+    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal
 
@@ -14,6 +16,7 @@ from core.level_repository import get_all_levels
 from .render_strategy import get_render_strategy_for
 
 CELL_SIZE = 15
+USER_ELEMENTS_DIR = "user_elements"
 
 class LogicElementItem(QGraphicsItem):
     def __init__(self, logic_element, x, y):
@@ -495,11 +498,27 @@ class LogicGameUI(QMainWindow):
                 break
 
     def save_as_custom_element(self):
-        data = self.game_model.grid.to_dict()
-        name = f"Custom{len(self.game_model.toolbox)}"
-        CustomElementClass = make_custom_element_class(name, data)
-        self.game_model.toolbox.append(CustomElementClass)
-        self.toolbox.addItem(CustomElementClass.__name__)
+        name, ok = QInputDialog.getText(self, "Название элемента", "Введите название:")
+        if not ok or not name:
+            return
+
+        # Сохраняем grid как словарь
+        grid_dict = self.game_model.grid.to_dict()
+
+        # Путь к файлу
+        os.makedirs(USER_ELEMENTS_DIR, exist_ok=True)
+        filepath = os.path.join(USER_ELEMENTS_DIR, f"{name}.json")
+
+        # Сохраняем в файл
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(grid_dict, f, indent=2)
+
+        # Генерируем класс кастомного элемента
+        custom_class = make_custom_element_class(name, grid_dict)
+
+        # Добавляем в тулбокс и список
+        self.game_model.toolbox.append(custom_class)
+        self.toolbox.addItem(custom_class.__name__)
 
     def add_element_to_scene(self, element_type, x, y):
         element = self.game_model.create_element(element_type)

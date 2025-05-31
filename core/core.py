@@ -1,10 +1,14 @@
 import itertools
+import json
+import os
 from collections import deque, defaultdict
 from operator import truth
 from typing import List
 
 from .logic_elements import *
 from .custom_element_factory import make_custom_element_class
+
+USER_ELEMENTS_DIR = "user_elements"
 
 class Level:
     def __init__(self,
@@ -262,6 +266,24 @@ class GameModel:
         self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, CustomElement]
         self.name_counter = defaultdict(int)
         self.existing_names = set()
+        self.load_user_elements()
+
+    def load_user_elements(self):
+        if not os.path.exists(USER_ELEMENTS_DIR):
+            return
+
+        for filename in os.listdir(USER_ELEMENTS_DIR):
+            if filename.endswith(".json"):
+                path = os.path.join(USER_ELEMENTS_DIR, filename)
+                with open(path, "r", encoding="utf-8") as f:
+                    grid_data = json.load(f)
+
+                name = os.path.splitext(filename)[0]
+                try:
+                    custom_class = make_custom_element_class(name, grid_data)
+                    self.toolbox.append(custom_class)
+                except Exception as e:
+                    print(f"Не удалось загрузить {filename}: {e}")
 
     def create_element(self, element_type: type) -> Optional[LogicElement]:
         """Создает новый элемент (без размещения на поле)"""
