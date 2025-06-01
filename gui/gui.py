@@ -479,12 +479,13 @@ class LogicGameUI(QMainWindow):
 
         self.new_element_button = QPushButton("Новый элемент")
         self.new_element_button.clicked.connect(self.create_new_custom_element)
-
         self.save_element_button = QPushButton("Сохранить")
         self.save_element_button.clicked.connect(self.save_custom_element)
-
-        side_panel.addWidget(self.new_element_button)
-        side_panel.addWidget(self.save_element_button)
+        button_row_layout = QHBoxLayout()
+        button_row_layout.setSpacing(5)
+        button_row_layout.addWidget(self.new_element_button)
+        button_row_layout.addWidget(self.save_element_button)
+        side_panel.addLayout(button_row_layout)
 
         self.truth_table_view = TruthTableView()
         level = self.game_model.current_level
@@ -554,7 +555,7 @@ class LogicGameUI(QMainWindow):
 
         elif action == edit_action:
             element_name = item.text()
-            json_path = os.path.join("user_elements", f"{element_name}.json")
+            json_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
 
             if os.path.exists(json_path):
                 with open(json_path, "r", encoding="utf-8") as f:
@@ -563,7 +564,8 @@ class LogicGameUI(QMainWindow):
                         # Пытаемся загрузить весь JSON напрямую как Grid
                         grid = Grid()
                         grid.load_from_dict(data)
-                        self.add_new_scene_tab(f"Редакт: {element_name}", grid)
+                        self.add_new_scene_tab(f"Редакт: {element_name}", grid,
+                                               element_name=element_name)
                     except Exception as e:
                         QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
             else:
@@ -588,7 +590,7 @@ class LogicGameUI(QMainWindow):
 
         # Создаём новый пустой grid и сцену
         grid = Grid()
-        self.add_new_scene_tab(f"Новый: {name}", grid, element_name=name)
+        self.add_new_scene_tab(f"*Редакт: {name}", grid, element_name=name)
 
     def save_custom_element(self):
         index = self.tab_widget.currentIndex()
@@ -617,6 +619,12 @@ class LogicGameUI(QMainWindow):
                 if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
                     self.game_model.toolbox.append(new_class)
                     self.toolbox.addItem(new_class.__name__)
+
+                # Убираем звёздочку - признак несохранённых изменений
+                tab_name = self.tab_widget.tabText(index)
+                if tab_name.startswith("*"):
+                    self.tab_widget.setTabText(index, tab_name[1:])
+                self.tab_metadata[index]["modified"] = False
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить элемент: {e}")
@@ -655,7 +663,8 @@ class LogicGameUI(QMainWindow):
         self.tab_metadata[index] = {
             "scene": scene,
             "grid": grid,
-            "element_name": element_name
+            "element_name": element_name,
+            "modified": True
         }
 
     def check_level(self):
