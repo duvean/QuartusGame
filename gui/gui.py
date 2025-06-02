@@ -7,7 +7,8 @@ from typing import Tuple, Set, Dict, List, Optional
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QGraphicsScene, \
     QGraphicsView, QGraphicsItem, QGraphicsLineItem, QHBoxLayout, QListWidget, \
     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QTableWidget, QTableWidgetItem, QAbstractItemView, QLabel, \
-    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog, QTabWidget
+    QVBoxLayout, QStackedWidget, QFrame, QLineEdit, QMessageBox, QMenu, QDialog, QFormLayout, QInputDialog, QTabWidget, \
+    QListWidgetItem
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath, QIcon
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal, QPoint
 
@@ -515,20 +516,56 @@ class LogicGameUI(QMainWindow):
             self.toggle_menu_button.setText("")
             self.back_button.setText("")
 
-    def select_element(self, item):
+    def select_element(self, item: QListWidgetItem):
         element_name = item.text()
         for element_type in self.game_model.toolbox:
             if element_type.__name__ == element_name:
                 self.selected_element_type = element_type
                 break
 
+    def handle_delete_action(self, item: QListWidgetItem):
+        element_name = item.text()
+        file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
+
+        if not os.path.isfile(file_path):
+            QMessageBox.information(
+                self,
+                "Удаление запрещено",
+                f"Элемент '{element_name}' является встроенным и не может быть удалён."
+            )
+            return
+
+        confirm = QMessageBox.question(
+            self,
+            "Подтверждение удаления",
+            f"Удалить кастомный элемент '{element_name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        if confirm == QMessageBox.StandardButton.Yes:
+            self.delete_custom_element(element_name)
+
+    def handle_edit_action(self, item: QListWidgetItem):
+        element_name = item.text()
+        file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
+
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
+                    # Пытаемся загрузить весь JSON напрямую как Grid
+                    grid = Grid()
+                    grid.load_from_dict(data)
+                    self.add_new_scene_tab(f"Редакт: {element_name}", grid,
+                                           element_name=element_name)
+                except Exception as e:
+                    QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
+        else:
+            QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
+
     def show_toolbox_context_menu(self, position: QPoint):
         item = self.toolbox.itemAt(position)
         if item is None:
             return
-
-        element_name = item.text()
-        file_path = os.path.join("user_elements", f"{element_name}.json")
 
         menu = QMenu()
         edit_action = menu.addAction("Редактировать")
@@ -536,40 +573,9 @@ class LogicGameUI(QMainWindow):
 
         action = menu.exec(self.toolbox.viewport().mapToGlobal(position))
         if action == delete_action:
-            if not os.path.isfile(file_path):
-                QMessageBox.information(
-                    self,
-                    "Удаление запрещено",
-                    f"Элемент '{element_name}' является встроенным и не может быть удалён."
-                )
-                return
-
-            confirm = QMessageBox.question(
-                self,
-                "Подтверждение удаления",
-                f"Удалить кастомный элемент '{element_name}'?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if confirm == QMessageBox.StandardButton.Yes:
-                self.delete_custom_element(element_name)
-
+            self.handle_delete_action(item)
         elif action == edit_action:
-            element_name = item.text()
-            json_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
-
-            if os.path.exists(json_path):
-                with open(json_path, "r", encoding="utf-8") as f:
-                    try:
-                        data = json.load(f)
-                        # Пытаемся загрузить весь JSON напрямую как Grid
-                        grid = Grid()
-                        grid.load_from_dict(data)
-                        self.add_new_scene_tab(f"Редакт: {element_name}", grid,
-                                               element_name=element_name)
-                    except Exception as e:
-                        QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
-            else:
-                QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
+            self.handle_edit_action(item)
 
     def refresh_toolbox(self):
         self.toolbox.clear()
@@ -615,7 +621,7 @@ class LogicGameUI(QMainWindow):
                 # Перегружаем только что сохранённый элемент
                 new_class = make_custom_element_class(name, grid_dict)
 
-                # Если элемента ещё нет в тулбоксе — добавляем
+                # Если элемента ещё нет в тулбоксе - добавляем
                 if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
                     self.game_model.toolbox.append(new_class)
                     self.toolbox.addItem(new_class.__name__)
@@ -659,7 +665,6 @@ class LogicGameUI(QMainWindow):
         index = self.tab_widget.addTab(view, name)
         self.tab_widget.setCurrentIndex(index)
 
-        # Сохраняем метаданные
         self.tab_metadata[index] = {
             "scene": scene,
             "grid": grid,

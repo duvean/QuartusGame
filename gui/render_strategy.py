@@ -44,13 +44,12 @@ class AbstractElementPainter(ABC):
                             continue
                         source, source_port = conn
                         if 0 <= source_port < len(source.get_output_values()):
-                            if source.get_output_values()[source_port]: # Значение по OR от соединений
+                            if source.get_output_values()[source_port]: # Значение по OR от всех соединений (в квартусе так же)
                                 value = 1
                                 break
                     else:
                         value = 0
                 elif isinstance(conns, tuple):
-                    # Поддержка старого формата (одиночного соединения)
                     source, source_port = conns
                     if 0 <= source_port < len(source.get_output_values()):
                         value = source.get_output_values()[source_port]
