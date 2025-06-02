@@ -39,6 +39,8 @@ class LogicElementItem(QGraphicsItem):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             if self.scene() and hasattr(self.scene(), "update_connections"):
                 self.scene().update_connections()
+            if self.scene() and hasattr(self.scene(), 'notify_modified'):
+                self.scene().notify_modified()
 
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             new_pos = value  # QPointF
@@ -177,10 +179,11 @@ class LogicGameScene(QGraphicsScene):
 
     def addItem(self, item: QGraphicsItem):
         super().addItem(item)
+        self.notify_modified()
         if isinstance(item, LogicElementItem) and isinstance(item.logic_element, InputElement):
-            self.add_input_switch(item)
+            self._add_input_switch(item)
 
-    def add_input_switch(self, item: LogicElementItem):
+    def _add_input_switch(self, item: LogicElementItem):
         button = QCheckBox()
         button.setChecked(item.logic_element.get_output_values()[0] == 1)
 
@@ -196,12 +199,12 @@ class LogicGameScene(QGraphicsScene):
 
         proxy.setPos(5, y)
 
-        def on_toggle():
+        def _on_toggle():
             item.logic_element.set_value(1 if button.isChecked() else 0)
             self.update_outputs()
             self.update()
 
-        button.toggled.connect(on_toggle)
+        button.toggled.connect(_on_toggle)
 
     def select_item(self, item: LogicElementItem):
         self.clear_selection()
@@ -213,6 +216,7 @@ class LogicGameScene(QGraphicsScene):
         self.remove_connections_of(item.logic_element)
         self.grid.remove_element(item.logic_element)
         self.selected_element = None
+        self.notify_modified()
 
     def mousePressEvent(self, event):
         item = self.itemAt(event.scenePos(), QTransform())
@@ -291,14 +295,17 @@ class LogicGameScene(QGraphicsScene):
         item = self.itemAt(event.scenePos(), QTransform())
         if isinstance(item, LogicElementItem):
             scene_pos = item.scenePos() + QPointF(item.boundingRect().width() / 2, item.boundingRect().height() / 2)
-            # Когда-нибудь пригодится
-
+            # Пока пустой обработчик, только получаем координаты клика
         super().mouseDoubleClickEvent(event)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Backspace:
             if self.selected_element:
                 self.delete_element(self.selected_element)
+
+    def notify_modified(self):
+        if self._parent_ui:
+            self._parent_ui.notify_scene_modified(self)
 
     def show_edit_dialog(self, item: LogicElementItem):
         dialog = QDialog()
@@ -445,7 +452,7 @@ class LogicGameUI(QMainWindow):
         self.toggle_menu_button.setFixedHeight(40)
         menu_layout.addWidget(self.toggle_menu_button)
 
-        # Кнопка "Назад в меню"
+        # Кнопка "Назад на главную"
         self.back_button = QPushButton()
         self.back_button.setIcon(QIcon.fromTheme("go-home"))
         self.back_button.setStyleSheet("text-align: left;")
@@ -456,19 +463,21 @@ class LogicGameUI(QMainWindow):
         menu_layout.addStretch()
         main_layout.addWidget(self.side_menu)
 
-        # === ЦЕНТРАЛЬНАЯ ЧАСТЬ — ГРАФИЧЕСКОЕ ПОЛЕ ===
+        # === ЦЕНТРАЛЬНАЯ ЧАСТЬ - ГРАФИЧЕСКОЕ ПОЛЕ ===
         self.scene = LogicGameScene(self.game_model.grid)
         self.scene.set_parent_ui(self)
         self.scene.grid.set_level(self.game_model.current_level)
 
+        # Вкладка текущего уровня
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[LogicGameScene, QGraphicsView]] = []
         self.add_new_scene_tab("Игровое поле", self.game_model.grid)
 
-        # === ПРАВАЯ ЧАСТЬ — ПАНЕЛЬ ЭЛЕМЕНТОВ ===
+        # === ПРАВАЯ ЧАСТЬ - ПАНЕЛЬ УПРАВЛЕНИЯ ===
         side_panel = QVBoxLayout()
 
+        # Тулбокс (панель элементов)
         self.toolbox = QListWidget()
         self.toolbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.toolbox.customContextMenuRequested.connect(self.show_toolbox_context_menu)
@@ -478,6 +487,7 @@ class LogicGameUI(QMainWindow):
         side_panel.addWidget(QLabel("Элементы:"))
         side_panel.addWidget(self.toolbox)
 
+        # Кнопки удаления и сохранения для элементов
         self.new_element_button = QPushButton("Новый элемент")
         self.new_element_button.clicked.connect(self.create_new_custom_element)
         self.save_element_button = QPushButton("Сохранить")
@@ -488,6 +498,7 @@ class LogicGameUI(QMainWindow):
         button_row_layout.addWidget(self.save_element_button)
         side_panel.addLayout(button_row_layout)
 
+        # Таблица истинности
         self.truth_table_view = TruthTableView()
         level = self.game_model.current_level
         self.truth_table_view.set_table(
@@ -497,6 +508,7 @@ class LogicGameUI(QMainWindow):
         )
         side_panel.addWidget(self.truth_table_view)
 
+        # Кнопка проверки уровня
         self.test_button = QPushButton("Проверить уровень")
         self.test_button.clicked.connect(self.check_level)
         side_panel.addWidget(self.test_button)
@@ -523,7 +535,7 @@ class LogicGameUI(QMainWindow):
                 self.selected_element_type = element_type
                 break
 
-    def handle_delete_action(self, item: QListWidgetItem):
+    def _handle_delete_action(self, item: QListWidgetItem):
         element_name = item.text()
         file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
 
@@ -544,7 +556,7 @@ class LogicGameUI(QMainWindow):
         if confirm == QMessageBox.StandardButton.Yes:
             self.delete_custom_element(element_name)
 
-    def handle_edit_action(self, item: QListWidgetItem):
+    def _handle_edit_action(self, item: QListWidgetItem):
         element_name = item.text()
         file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
 
@@ -573,9 +585,9 @@ class LogicGameUI(QMainWindow):
 
         action = menu.exec(self.toolbox.viewport().mapToGlobal(position))
         if action == delete_action:
-            self.handle_delete_action(item)
+            self._handle_delete_action(item)
         elif action == edit_action:
-            self.handle_edit_action(item)
+            self._handle_edit_action(item)
 
     def refresh_toolbox(self):
         self.toolbox.clear()
@@ -597,6 +609,19 @@ class LogicGameUI(QMainWindow):
         # Создаём новый пустой grid и сцену
         grid = Grid()
         self.add_new_scene_tab(f"*Редакт: {name}", grid, element_name=name)
+
+    def mark_tab_modified(self, index: int):
+        if (self.tab_metadata[index]["modified"] is not None) and (self.tab_metadata[index]["element_name"]):
+            tab_name = self.tab_widget.tabText(index)
+            if not tab_name.startswith("*"):
+                self.tab_widget.setTabText(index, f'*{tab_name}')
+            self.tab_metadata[index]["modified"] = True
+
+    def notify_scene_modified(self, scene):
+        for index, meta in self.tab_metadata.items():
+            if meta["scene"] == scene:
+                self.mark_tab_modified(index)
+                break
 
     def save_custom_element(self):
         index = self.tab_widget.currentIndex()
