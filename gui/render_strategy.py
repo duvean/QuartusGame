@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from PyQt6.QtGui import QPainter, QBrush, QColor, QPen
+from PyQt6.QtGui import QPainter, QBrush, QColor, QPen, QPainterPath
 from PyQt6.QtCore import QRectF, Qt, QPointF
 from core import AndElement, NotElement, InputElement, OutputElement, OrElement, XorElement
 
@@ -180,7 +180,24 @@ class AndElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
-        painter.drawRect(rect)
+
+        left = rect.left()
+        right = rect.right()
+        top = rect.top()
+        bottom = rect.bottom()
+        center_y = rect.center().y()
+        width = rect.width()
+        height = rect.height()
+        radius = height / 2
+
+        path = QPainterPath()
+        path.moveTo(left + width * 0.08, top)
+        path.lineTo(left + width * 0.08 + width / 2, top)
+        path.arcTo(left + width * 0.08 + width / 2 - radius, top, height, height, 90, -180)
+        path.lineTo(left + width * 0.08, bottom)
+        path.closeSubpath()
+
+        painter.drawPath(path)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
         self.paint_ports(painter, element, game_item)
@@ -190,7 +207,23 @@ class OrElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
-        painter.drawRect(rect)
+
+        left = rect.left()
+        right = rect.right()
+        top = rect.top()
+        bottom = rect.bottom()
+        center_y = rect.center().y()
+        width = rect.width()
+        height = rect.height()
+
+        path = QPainterPath()
+        path.moveTo(left, top)
+        path.quadTo(left + width * 0.2, center_y, left, bottom)
+        path.quadTo(right - width * 0.2, bottom, right- width * 0.1, center_y)
+        path.quadTo(right - width * 0.2, top, left + width * 0.2, top)
+        path.closeSubpath()
+
+        painter.drawPath(path)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
         self.paint_ports(painter, element, game_item)
@@ -200,7 +233,27 @@ class NotElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
-        painter.drawRect(rect)
+
+        left = rect.left()
+        right = rect.right()
+        top = rect.top()
+        bottom = rect.bottom()
+        center_y = rect.center().y()
+        width = rect.width()
+        height = rect.height()
+
+        path = QPainterPath()
+        path.moveTo(left + width * 0.08, top)
+        path.lineTo(right - height * 0.2, center_y)
+        path.lineTo(left + width * 0.08, bottom)
+        path.closeSubpath()
+        painter.drawPath(path)
+
+        # Если нужен кружочек
+        # circle_radius = rect.height() * 0.1
+        # circle_center = QPointF(rect.right() - circle_radius * 2, rect.center().y())
+        # painter.drawEllipse(circle_center, circle_radius, circle_radius)
+
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
         self.paint_ports(painter, element, game_item)
@@ -210,7 +263,33 @@ class XorElementPainter(PrimitiveElementPainter):
     def paint(self, painter, rect, element, is_selected, game_item):
         painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
         painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
-        painter.drawRect(rect)
+
+        left = rect.left()
+        right = rect.right()
+        top = rect.top()
+        bottom = rect.bottom()
+        center_y = rect.center().y()
+        width = rect.width()
+        height = rect.height()
+
+        path = QPainterPath()
+        path.moveTo(left + width * 0.15, top)
+        path.quadTo(left + width * 0.4, center_y, left + width * 0.15, bottom)
+        path.quadTo(right - width * 0.22, bottom, right - width * 0.1, center_y)
+        path.quadTo(right - width * 0.22, top, left + width * 0.2, top)
+        path.closeSubpath()
+
+        # Внешняя левая дуга (для XOR)
+        xor_path = QPainterPath()
+        xor_path.moveTo(left, top)
+        xor_path.lineTo(left + width * 0.08, top)
+        xor_path.quadTo(left + width * 0.33, center_y, left + width * 0.08, bottom)
+        xor_path.lineTo(left, bottom)
+        xor_path.quadTo(left + width * 0.2, center_y, left, top)
+        xor_path.closeSubpath()
+
+        painter.drawPath(path)
+        painter.drawPath(xor_path)
         painter.setPen(Qt.GlobalColor.black)
         painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, element.name)
         self.paint_ports(painter, element, game_item)
@@ -224,6 +303,7 @@ painter_registry = {
     NotElement: NotElementPainter(),
     XorElement: XorElementPainter(),
 }
+
 default_painter = DefaultElementPainter()
 
 def get_render_strategy_for(element):
