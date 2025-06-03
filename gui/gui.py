@@ -13,8 +13,7 @@ from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF, QRectF, QPointF, pyqtSignal, QPoint
 
 from core import InputElement, GameModel, Grid, Level, LogicElement, make_custom_element_class
-from core.level_repository import get_all_levels
-from tests.test_core import model
+from core.level_factory import LevelFactory
 from .render_strategy import get_render_strategy_for
 
 CELL_SIZE = 15
@@ -471,11 +470,11 @@ class LogicGameUI(QMainWindow):
         # Вкладка текущего уровня
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
-        self.tab_widget.setMovable(True)
+        #self.tab_widget.setMovable(True)
         self.tab_widget.tabCloseRequested.connect(self._handle_tab_close_requested)
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[LogicGameScene, QGraphicsView]] = []
-        self.add_new_scene_tab("Игровое поле", self.game_model.grid)
+        self.add_new_scene_tab(self.game_model.grid.level.name, self.game_model.grid)
 
         # === ПРАВАЯ ЧАСТЬ - ПАНЕЛЬ УПРАВЛЕНИЯ ===
         side_panel = QVBoxLayout()
@@ -501,20 +500,21 @@ class LogicGameUI(QMainWindow):
         button_row_layout.addWidget(self.save_element_button)
         side_panel.addLayout(button_row_layout)
 
-        # Таблица истинности
-        self.truth_table_view = TruthTableView()
+        # Таблица истинности (если вкладка - уровень)
         level = self.game_model.current_level
-        self.truth_table_view.set_table(
-            level.truth_table,
-            input_names=level.input_names,
-            output_names=level.output_names
-        )
-        side_panel.addWidget(self.truth_table_view)
+        if level.truth_table != {}:
+            self.truth_table_view = TruthTableView()
+            self.truth_table_view.set_table(
+                level.truth_table,
+                input_names=level.input_names,
+                output_names=level.output_names
+            )
+            side_panel.addWidget(self.truth_table_view)
 
-        # Кнопка проверки уровня
-        self.test_button = QPushButton("Проверить уровень")
-        self.test_button.clicked.connect(self.check_level)
-        side_panel.addWidget(self.test_button)
+            # Кнопка проверки уровня
+            self.test_button = QPushButton("Проверить уровень")
+            self.test_button.clicked.connect(self.check_level)
+            side_panel.addWidget(self.test_button)
 
         side_widget = QWidget()
         side_widget.setLayout(side_panel)
@@ -559,6 +559,9 @@ class LogicGameUI(QMainWindow):
 
         self.tab_metadata.pop(index, None)
         self.tab_widget.removeTab(index)
+
+        if self.tab_widget.count() == 0:
+            self.back_to_menu_requested.emit()
 
     def _handle_delete_action(self, item: QListWidgetItem):
         element_name = item.text()
@@ -719,7 +722,7 @@ class LogicGameUI(QMainWindow):
             "scene": scene,
             "grid": grid,
             "element_name": element_name,
-            "modified": True
+            "modified": False
         }
 
     def check_level(self):
@@ -776,7 +779,7 @@ class MainMenuWidget(QWidget):
         layout.addWidget(title)
 
         for i, level in enumerate(self.levels):
-            btn = QPushButton(f"Уровень {i + 1}")
+            btn = QPushButton(level.name)
             btn.clicked.connect(lambda checked, index=i: self.level_selected.emit(index))
             layout.addWidget(btn)
 
@@ -790,7 +793,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Logic Circuit Game")
         self.setGeometry(100, 100, 1000, 700)
 
-        self.levels = get_all_levels()
+        self.levels = LevelFactory.get_all_levels()
 
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)
