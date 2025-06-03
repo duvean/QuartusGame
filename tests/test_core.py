@@ -1,6 +1,6 @@
 import pytest
-from core.core import *
-from core.logic_elements import *
+from core.GameModel import *
+from core.LogicElements import *
 
 
 # -------------------- Фикстуры --------------------

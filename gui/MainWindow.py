@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QLabel, QVBoxLayout, QStackedWidget
 from PyQt6.QtCore import pyqtSignal
 
-from core import GameModel, LevelFactory
+from core.GameModel import GameModel
+from core.LevelFactory import LevelFactory
 from gui.GameUI import GameUI
 
 class MainMenuWidget(QWidget):

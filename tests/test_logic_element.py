@@ -1,4 +1,4 @@
-from core.logic_elements import *
+from core.LogicElements import *
 
 def test_connect():
     inp = InputElement()

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from PyQt6.QtGui import QPainter, QBrush, QColor, QPen, QPainterPath
 from PyQt6.QtCore import QRectF, Qt, QPointF
-from core import AndElement, NotElement, InputElement, OutputElement, OrElement, XorElement
+from core.LogicElements import AndElement, NotElement, InputElement, OutputElement, OrElement, XorElement
 
 CELL_SIZE = 25
 

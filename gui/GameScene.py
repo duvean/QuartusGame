@@ -6,7 +6,8 @@ from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
 from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF
 
-from core import InputElement, Grid
+from core.LogicElements import InputElement
+from core.Grid import Grid
 from gui.LogicElementItem import LogicElementItem
 
 CELL_SIZE = 15

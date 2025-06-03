@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, Q
 from PyQt6.QtGui import QPainter, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
-from core import Grid, make_custom_element_class
+from core.CustomElementFactory import CustomElementFactory
+from core.Grid import Grid
 from gui.GameScene import GameScene
 from gui.TruthTableView import TruthTableView
 
@@ -273,7 +274,7 @@ class GameUI(QMainWindow):
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(grid_dict, f, indent=2)
                 # Перегружаем только что сохранённый элемент
-                new_class = make_custom_element_class(name, grid_dict)
+                new_class = CustomElementFactory.make_custom_element_class(name, grid_dict)
 
                 # Если элемента ещё нет в тулбоксе - добавляем
                 if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
