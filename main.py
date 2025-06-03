@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QApplication
-from gui.gui import MainWindow
+from gui.MainWindow import MainWindow
 
 
 def main() -> None:
