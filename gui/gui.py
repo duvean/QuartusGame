@@ -470,6 +470,9 @@ class LogicGameUI(QMainWindow):
 
         # Вкладка текущего уровня
         self.tab_widget = QTabWidget()
+        self.tab_widget.setTabsClosable(True)
+        self.tab_widget.setMovable(True)
+        self.tab_widget.tabCloseRequested.connect(self._handle_tab_close_requested)
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[LogicGameScene, QGraphicsView]] = []
         self.add_new_scene_tab("Игровое поле", self.game_model.grid)
@@ -534,6 +537,28 @@ class LogicGameUI(QMainWindow):
             if element_type.__name__ == element_name:
                 self.selected_element_type = element_type
                 break
+
+    def _handle_tab_close_requested(self, index: int):
+        metadata = self.tab_metadata.get(index)
+        if not metadata:
+            self.tab_widget.removeTab(index)
+            return
+
+        if metadata.get("modified", False):
+            tab_title = self.tab_widget.tabText(index).removeprefix("*").strip()
+            reply = QMessageBox.question(
+                self,
+                "Несохранённые изменения",
+                f"Сохранить изменения перед закрытием вкладки '{tab_title}'?",
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            )
+            if reply == QMessageBox.StandardButton.Cancel:
+                return
+            elif reply == QMessageBox.StandardButton.Save:
+                self.save_custom_element()
+
+        self.tab_metadata.pop(index, None)
+        self.tab_widget.removeTab(index)
 
     def _handle_delete_action(self, item: QListWidgetItem):
         element_name = item.text()
