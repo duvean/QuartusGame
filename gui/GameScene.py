@@ -84,6 +84,18 @@ class GameScene(QGraphicsScene):
         self.selected_element = item
         item.is_selected = True
 
+    def place_element(self, type, pos):
+        x = math.floor(pos.x() / CELL_SIZE) * CELL_SIZE
+        y = math.floor(pos.y() / CELL_SIZE) * CELL_SIZE
+        element = self.grid.create_element(type)
+        if self.grid.add_element(element, x // CELL_SIZE, y // CELL_SIZE):
+            item = LogicElementItem(element, x, y)
+            self.addItem(item)
+
+    @staticmethod
+    def connect_elements(source, source_idx, target, target_idx) -> bool:
+        return source.connect_output(source_idx, target, target_idx)
+
     def delete_element(self, item: LogicElementItem):
         self.removeItem(item)
         self.remove_connections_of(item.logic_element)
@@ -136,7 +148,7 @@ class GameScene(QGraphicsScene):
                                 (item.logic_element, port_index)
                                 if prev_type == "output" else (self.selected_element.logic_element, prev_index)
                             )
-                            if source.connect_output(source_idx, target, target_idx):
+                            if self.connect_elements(source, source_idx, target, target_idx):
                                 self.update_connections()
                                 self.update_outputs()
                                 self.update()
@@ -151,14 +163,9 @@ class GameScene(QGraphicsScene):
         else:
             # Клик не по элементу — пробуем разместить новый, если он выбран
             if event.button() == Qt.MouseButton.LeftButton and self._parent_ui.selected_element_type:
-                scene_pos = event.scenePos()
-                x = math.floor(scene_pos.x() / CELL_SIZE) * CELL_SIZE
-                y = math.floor(scene_pos.y() / CELL_SIZE) * CELL_SIZE
                 element_type = self._parent_ui.selected_element_type
-                element = self.grid.create_element(element_type)
-                if self.grid.add_element(element, x // CELL_SIZE, y // CELL_SIZE):
-                    item = LogicElementItem(element, x, y)
-                    self.addItem(item)
+                scene_pos = event.scenePos()
+                self.place_element(element_type, scene_pos)
             else:
                 self.clear_selection()
 
