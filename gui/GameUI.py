@@ -72,7 +72,7 @@ class GameUI(QMainWindow):
         # Вкладка текущего уровня
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
-        #self.tab_widget.setMovable(True)
+        #self.tab_widget.setMovable(True) # ломает индексацию вкладок
         self.tab_widget.tabCloseRequested.connect(self._handle_tab_close_requested)
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[GameScene, QGraphicsView]] = []
