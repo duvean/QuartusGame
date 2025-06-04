@@ -38,13 +38,12 @@ class AbstractElementPainter(ABC):
                 conns = element.input_connections[port_index]
 
                 if isinstance(conns, list):
-                    # Несколько соединений к одному входу допустимо
                     for conn in conns:
                         if conn is None:
                             continue
                         source, source_port = conn
                         if 0 <= source_port < len(source.get_output_values()):
-                            if source.get_output_values()[source_port]: # Значение по OR от всех соединений (в квартусе так же)
+                            if source.get_output_values()[source_port]:
                                 value = 1
                                 break
                     else:
@@ -61,12 +60,18 @@ class AbstractElementPainter(ABC):
             # Отображение значения
             if value is not None:
                 painter.setPen(Qt.GlobalColor.black)
-                painter.drawText(QPointF(x - 20, y + 4), f"[{str(value)}]")
+                if port_type == "output":
+                    painter.drawText(QPointF(x + 5, y + 4), f"[{str(value)}]")
+                elif port_type == "input":
+                    painter.drawText(QPointF(x - 20, y + 4), f"[{str(value)}]")
 
             # Отображение имени
             if port_name is not None:
                 painter.setPen(Qt.GlobalColor.black)
-                painter.drawText(QPointF(x + 8, y + 4), port_name)
+                if port_type == "output":
+                    painter.drawText(QPointF(x - 6 - painter.fontMetrics().horizontalAdvance(port_name), y + 4), port_name)
+                elif port_type == "input":
+                    painter.drawText(QPointF(x + 8, y + 4), port_name)
 
 
 class DefaultElementPainter(AbstractElementPainter):

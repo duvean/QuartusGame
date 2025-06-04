@@ -36,7 +36,6 @@ class MainMenuWidget(QWidget):
             btn.clicked.connect(lambda checked, index=i: self.level_selected.emit(index))
             btn.setEnabled(level.unlocked)  # блокируем, если уровень не открыт
             self.level_buttons.append(btn)  # сохраняем кнопку
-            level_list.addWidget(btn)
             level_list.addWidget(btn, alignment=Qt.AlignmentFlag.AlignCenter)
 
         container = QFrame()
@@ -68,6 +67,48 @@ class MainMenuWidget(QWidget):
                 color: #999999;
                 background-color: #dddddd;
             }
+            QScrollBar:vertical {
+                    background: transparent;
+                    width: 8px;
+                    margin: 0px;
+                }
+                QScrollBar::handle:vertical {
+                    background: #dcdcdc;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }
+            
+                QScrollBar::add-line:vertical,
+                QScrollBar::sub-line:vertical {
+                    height: 0px;
+                }
+            
+                QScrollBar::add-page:vertical,
+                QScrollBar::sub-page:vertical {
+                    background: none;
+                }
+            
+                QScrollBar:horizontal {
+                    background: transparent;
+                    height: 8px;
+                    margin: 0px;
+                }
+            
+                QScrollBar::handle:horizontal {
+                    background: #dcdcdc;
+                    border-radius: 4px;
+                    min-width: 20px;
+                }
+            
+                QScrollBar::add-line:horizontal,
+                QScrollBar::sub-line:horizontal {
+                    width: 0px;
+                }
+            
+                QScrollBar::add-page:horizontal,
+                QScrollBar::sub-page:horizontal {
+                    background: none;
+                }
         """)
 
     def update_buttons(self):

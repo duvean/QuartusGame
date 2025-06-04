@@ -49,7 +49,7 @@ class LogicElementItem(QGraphicsItem):
 
         return super().itemChange(change, value)
 
-    def boundingRect(self):
+    def boundingRect(self) -> QRectF:
         w = self.logic_element.width
         h = self.logic_element.height
         return QRectF(0, 0, w * CELL_SIZE, h * CELL_SIZE)

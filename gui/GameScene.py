@@ -178,10 +178,16 @@ class GameScene(QGraphicsScene):
             # Пока пустой обработчик, только получаем координаты клика
         super().mouseDoubleClickEvent(event)
 
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.update()
+        super().mouseReleaseEvent(event)
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Backspace:
             if self.selected_element:
                 self.delete_element(self.selected_element)
+                self.update()
 
     def notify_modified(self):
         if self._parent_ui:
@@ -194,6 +200,7 @@ class GameScene(QGraphicsScene):
         layout = QFormLayout()
 
         name_edit = QLineEdit(item.logic_element.name)
+        name_edit.selectAll()
         layout.addRow("Название элемента:", name_edit)
 
         input_port_edits = []

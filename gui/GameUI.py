@@ -42,25 +42,27 @@ class GameUI(QMainWindow):
         self.is_menu_expanded = False
         self.side_menu = QFrame()
         self.side_menu.setFixedWidth(40)
-        self.side_menu.setFrameShape(QFrame.Shape.StyledPanel)
 
         menu_layout = QVBoxLayout(self.side_menu)
-        menu_layout.setContentsMargins(5, 5, 5, 5)
+        menu_layout.setContentsMargins(5, 0, 0, 5)
 
         # Кнопка сворачивания меню
         self.toggle_menu_button = QPushButton()
         self.toggle_menu_button.setIcon(QIcon.fromTheme(QIcon.ThemeIcon.EditUndo))
-        self.toggle_menu_button.setStyleSheet("text-align: left;")
-        self.toggle_menu_button.clicked.connect(self.toggle_side_menu)
+        self.toggle_menu_button.setStyleSheet("QPushButton.side-menu-button { text-align: left; }")
         self.toggle_menu_button.setFixedHeight(40)
+        self.toggle_menu_button.setObjectName("side-menu-button")
+        self.toggle_menu_button.clicked.connect(self.toggle_side_menu)
         menu_layout.addWidget(self.toggle_menu_button)
 
         # Кнопка "Назад на главную"
         self.back_button = QPushButton()
         self.back_button.setIcon(QIcon.fromTheme("go-home"))
-        self.back_button.setStyleSheet("text-align: left;")
+        self.back_button.setStyleSheet("QPushButton.side-menu-button { text-align: left; }")
         self.back_button.setFixedHeight(40)
+        self.back_button.setObjectName("side-menu-button")
         self.back_button.clicked.connect(self.back_to_menu_requested.emit)
+        self.back_button.setEnabled(False)
         menu_layout.addWidget(self.back_button)
 
         menu_layout.addStretch()
@@ -74,7 +76,6 @@ class GameUI(QMainWindow):
         # Вкладка текущего уровня
         self.tab_widget = QTabWidget()
         self.tab_widget.setTabsClosable(True)
-        #self.tab_widget.setMovable(True) # ломает индексацию вкладок
         self.tab_widget.tabCloseRequested.connect(self._handle_tab_close_requested)
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[GameScene, QGraphicsView]] = []
@@ -147,6 +148,20 @@ class GameUI(QMainWindow):
                 QPushButton:pressed {
                     background-color: #c4c4c4;
                 }
+                QPushButton.side-menu-button {
+                    background-color: #ffffff;
+                    border: 1px solid #ccc;
+                    border-radius: 6px; 
+                    padding: 100px;
+                    margin: 0px;
+                    text-align: left;
+                }
+                QPushButton.side-menu-button:disabled {
+                    background-color: #ffffff;
+                    color: #888888;
+                    border: 1px solid #ccc;
+                    opacity: 0.4;
+                }
                 QTabWidget::pane {
                     border: 1px solid #ccc;
                     border-radius: 4px;
@@ -182,11 +197,10 @@ class GameUI(QMainWindow):
                 QListWidget::item:hover {
                     background-color: #f5f5f5;
                 }
-    
                 QTableWidget {
                     background-color: #ffffff;
                     border: 1px solid #e0e0e0;
-                    border-radius: 0px;
+                    border-radius: 6px;
                     gridline-color: #e0e0e0;
                     font-size: 14px;
                 }
@@ -251,14 +265,21 @@ class GameUI(QMainWindow):
 
     def toggle_side_menu(self):
         self.is_menu_expanded = not self.is_menu_expanded
-        if self.is_menu_expanded:
-            self.side_menu.setFixedWidth(200)
-            self.toggle_menu_button.setText("  Свернуть")
-            self.back_button.setText("  Вернуться в меню")
-        else:
-            self.side_menu.setFixedWidth(40)
-            self.toggle_menu_button.setText("")
-            self.back_button.setText("")
+        is_expanded = self.is_menu_expanded
+
+        # Меняем ширину меню
+        self.side_menu.setFixedWidth(200 if is_expanded else 40)
+
+        # Меняем текст кнопок
+        self.toggle_menu_button.setText("  Свернуть" if is_expanded else "")
+        self.back_button.setText("  Вернуться в меню" if is_expanded else "")
+
+        # Меняем иконку кнопки сворачивания
+        icon_name = "go-previous" if is_expanded else "go-next"
+        self.toggle_menu_button.setIcon(QIcon.fromTheme(icon_name))
+
+        # Включаем/выключаем остальные кнопки
+        self.back_button.setEnabled(is_expanded)
 
     def select_element(self, item: QListWidgetItem):
         element_name = item.text()
