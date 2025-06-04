@@ -4,7 +4,8 @@ import os
 from typing import Tuple, List, Optional
 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, QHBoxLayout, QListWidget,
-     QLabel, QVBoxLayout, QFrame, QMessageBox, QMenu, QInputDialog, QTabWidget, QListWidgetItem)
+                             QLabel, QVBoxLayout, QFrame, QMessageBox, QMenu, QInputDialog, QTabWidget, QListWidgetItem,
+                             QHeaderView)
 from PyQt6.QtGui import QPainter, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
@@ -112,6 +113,9 @@ class GameUI(QMainWindow):
                 input_names=level.input_names,
                 output_names=level.output_names
             )
+            self.truth_table_view.horizontalHeader().setStretchLastSection(True)
+            self.truth_table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+            self.truth_table_view.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
             side_panel.addWidget(self.truth_table_view)
 
             # Кнопка проверки уровня
@@ -122,6 +126,128 @@ class GameUI(QMainWindow):
         side_widget = QWidget()
         side_widget.setLayout(side_panel)
         main_layout.addWidget(side_widget, stretch=1)
+
+        self.setStyleSheet("""
+                QWidget {
+                    background-color: #f0f2f5;
+                    font-family: 'Segoe UI', sans-serif;
+                    font-size: 14px;
+                }
+                QPushButton {
+                    background-color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #dedede;
+                }
+                QPushButton:pressed {
+                    background-color: #c4c4c4;
+                }
+                QTabWidget::pane {
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    background: white;
+                }
+                QTabBar::tab {
+                    background: #ddd;
+                    border: 1px solid #ccc;
+                    border-bottom: none;
+                    padding: 6px 10px;
+                    border-top-left-radius: 5px;
+                    border-top-right-radius: 5px;
+                }
+                QTabBar::tab:selected {
+                    background: #f2f2f2;
+                    font-weight: 500;
+                }
+                QListWidget {
+                    background-color: white;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QListWidget::item {
+                    padding: 6px;
+                }
+                QListWidget::item:selected {
+                    background-color: #d0e8ff;
+                    color: black;
+                }
+                QListWidget::item:selected:hover {
+                    background-color: #bdbdff;
+                }
+                QListWidget::item:hover {
+                    background-color: #f5f5f5;
+                }
+    
+                QTableWidget {
+                    background-color: #ffffff;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 0px;
+                    gridline-color: #e0e0e0;
+                    font-size: 14px;
+                }
+                QHeaderView::section {
+                    background-color: #f5f5f5;
+                    padding: 6px;
+                    border: 1px solid #dcdcdc;
+                }
+                QTableWidget::item {
+                    padding: 6px;
+                    selection-background-color: #1976D2;
+                    selection-color: #ffffff;
+                }
+                QTableCornerButton::section {
+                    background-color: #f5f5f5;
+                    border: 1px solid #dcdcdc;
+                }
+                
+                QScrollBar:vertical {
+                    background: transparent;
+                    width: 8px;
+                    margin: 0px;
+                }
+                QScrollBar::handle:vertical {
+                    background: #dcdcdc;
+                    border-radius: 4px;
+                    min-height: 20px;
+                }
+            
+                QScrollBar::add-line:vertical,
+                QScrollBar::sub-line:vertical {
+                    height: 0px;
+                }
+            
+                QScrollBar::add-page:vertical,
+                QScrollBar::sub-page:vertical {
+                    background: none;
+                }
+            
+                QScrollBar:horizontal {
+                    background: transparent;
+                    height: 8px;
+                    margin: 0px;
+                }
+            
+                QScrollBar::handle:horizontal {
+                    background: #dcdcdc;
+                    border-radius: 4px;
+                    min-width: 20px;
+                }
+            
+                QScrollBar::add-line:horizontal,
+                QScrollBar::sub-line:horizontal {
+                    width: 0px;
+                }
+            
+                QScrollBar::add-page:horizontal,
+                QScrollBar::sub-page:horizontal {
+                    background: none;
+                }
+            """)
 
     def toggle_side_menu(self):
         self.is_menu_expanded = not self.is_menu_expanded

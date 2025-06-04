@@ -25,12 +25,20 @@ class TruthTableView(QTableWidget):
 
         # Заголовки согласно названиям эл-в определённым в уровне
         if input_names is None:
-            input_names = [f'In {i+1}' for i in range(input_count)]
+            input_names = [f'In {i + 1}' for i in range(input_count)]
         if output_names is None:
-            output_names = [f'Out {i+1}' for i in range(output_count)]
+            output_names = [f'Out {i + 1}' for i in range(output_count)]
 
-        self.setHorizontalHeaderLabels(input_names + output_names)
+        full_headers = input_names + output_names
 
+        # Устанавливаем заголовки с тултипами
+        for col, header in enumerate(full_headers):
+            item = QTableWidgetItem(header)
+            item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+            item.setToolTip(header)
+            self.setHorizontalHeaderItem(col, item)
+
+        # Установка значений
         for row_idx, (inputs, outputs) in enumerate(truth_table.items()):
             for col_idx, val in enumerate(inputs + outputs):
                 item = QTableWidgetItem(str(val))
@@ -61,3 +69,10 @@ class TruthTableView(QTableWidget):
 
     def reset_highlight(self):
         self.highlight_errors([])
+
+    def headerData(self, section, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
+            return self._headers[section]
+        elif role == Qt.ToolTipRole and orientation == Qt.Orientation.Horizontal:
+            return self._headers[section]
+        return super().headerData(section, orientation, role)
