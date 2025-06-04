@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, Q
 from PyQt6.QtGui import QPainter, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
+from core.Level import Level
 from core.CustomElementFactory import CustomElementFactory
 from core.Grid import Grid
 from gui.GameScene import GameScene
@@ -17,12 +18,12 @@ USER_ELEMENTS_DIR = "user_elements"
 
 class GameUI(QMainWindow):
     back_to_menu_requested = pyqtSignal()
+    level_completed = pyqtSignal(Level)
 
     def __init__(self, game_model):
         super().__init__()
         self.game_model = game_model
         self.selected_element_type = None
-        self.selected_port = None
         self.is_menu_expanded = False
         self.tab_metadata = {}
         self.init_ui()
@@ -329,11 +330,11 @@ class GameUI(QMainWindow):
 
     def check_level(self):
         if not self.game_model.current_level:
-            print("Уровень не загружен.")
+            QMessageBox.information(self, "Проверка уровня", "Уровень не загружен.")
             return
 
         if not self.game_model.grid.is_valid_circuit():
-            print("Схема не собрана.")
+            QMessageBox.warning(self, "Проверка уровня", "Схема не собрана.")
             self.truth_table_view.reset_highlight()
             return
 
@@ -348,19 +349,22 @@ class GameUI(QMainWindow):
         missing_outputs = [name for name in output_names if name not in available_outputs]
 
         if missing_inputs or missing_outputs:
-            print("Отсутствующие элементы схемы (проверьте корректность названий):")
+            msg = "Отсутствующие элементы схемы:\n"
             if missing_inputs:
-                print(f"  Входы: {', '.join(missing_inputs)}")
+                msg += f" - Входы: {', '.join(missing_inputs)}\n"
             if missing_outputs:
-                print(f"  Выходы: {', '.join(missing_outputs)}")
+                msg += f" - Выходы: {', '.join(missing_outputs)}"
+            QMessageBox.warning(self, "Проверка уровня", msg)
             self.truth_table_view.reset_highlight()
             return
 
         errors = self.game_model.check_level()
 
         if errors:
-            print("Ошибки в схеме:", errors)
             self.truth_table_view.highlight_errors(errors)
+            QMessageBox.warning(self, "Проверка уровня", f"Ошибки в схеме: {len(errors)} строк(и) не совпадают.")
         else:
-            print("Уровень пройден!")
+            QMessageBox.information(self, "Успех", "Уровень пройден!")
             self.truth_table_view.reset_highlight()
+            if self.game_model.current_level:
+                self.level_completed.emit(self.game_model.current_level)

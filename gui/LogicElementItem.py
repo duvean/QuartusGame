@@ -11,7 +11,7 @@ class LogicElementItem(QGraphicsItem):
         super().__init__()
         self.logic_element = logic_element
         self.setPos(x, y)
-        self.painter_strategy = get_render_strategy_for(self.logic_element)
+        self.render_strategy = get_render_strategy_for(self.logic_element)
         self.ports = self.create_ports()
         self.is_selected = False
         self.selected_port_index = None
@@ -55,7 +55,7 @@ class LogicElementItem(QGraphicsItem):
         return QRectF(0, 0, w * CELL_SIZE, h * CELL_SIZE)
 
     def create_ports(self):
-        return self.painter_strategy.create_ports(self.logic_element, self)
+        return self.render_strategy.create_ports(self.logic_element, self)
 
     def paint(self, painter: QPainter, option, widget):
         rect = self.boundingRect()

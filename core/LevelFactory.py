@@ -6,7 +6,7 @@ class LevelFactory:
         return [
             LevelFactory._make_level_1(),
             LevelFactory._make_level_2(),
-            LevelFactory._make_level_plain()
+            LevelFactory._make_level_freeplay()
         ]
 
     @staticmethod
@@ -20,7 +20,7 @@ class LevelFactory:
         input_names = ["Input_1", "Input_2"]
         output_names = ["Output_1"]
         name = "Уровень №1: И (AND)"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_2():
@@ -36,9 +36,9 @@ class LevelFactory:
         return Level(truth_table, input_names, output_names, name)
 
     @staticmethod
-    def _make_level_plain():
+    def _make_level_freeplay():
         truth_table = {}
         input_names = []
         output_names = []
         name = "Игровое поле"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
