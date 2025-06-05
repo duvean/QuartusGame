@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QGraphicsItem
 from PyQt6.QtGui import QPainter
-from PyQt6.QtCore import QRectF, QPointF
+from PyQt6.QtCore import QRectF, QPointF, Qt
 
 from gui.ElementRenderStrategy import get_render_strategy_for
 
@@ -22,12 +22,6 @@ class LogicElementItem(QGraphicsItem):
         )
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
-            if self.scene() and hasattr(self.scene(), "update_connections"):
-                self.scene().update_connections()
-            if self.scene() and hasattr(self.scene(), 'notify_modified'):
-                self.scene().notify_modified()
-
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             new_pos = value  # QPointF
 
@@ -48,6 +42,14 @@ class LogicElementItem(QGraphicsItem):
                         return QPointF(old_x * CELL_SIZE, old_y * CELL_SIZE)
 
         return super().itemChange(change, value)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self.scene() and hasattr(self.scene(), "update_connections"):
+                self.scene().update_connections()
+            if self.scene() and hasattr(self.scene(), 'notify_modified'):
+                self.scene().notify_modified()
+        super().mouseReleaseEvent(event)
 
     def boundingRect(self) -> QRectF:
         w = self.logic_element.width
