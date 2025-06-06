@@ -256,6 +256,7 @@ class GameScene(QGraphicsScene):
                 inp: inp.value()
                 for inp in self.grid.get_input_elements()
             }
+            #self.grid.tick_once()
             self.grid.compute_outputs(input_values)
 
     def update_connections(self):

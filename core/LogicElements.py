@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional, Set, Dict
 
+from core.BehaviorModifiers import BehaviorModifier, DelayModifier
+
+
 class LogicElement(ABC):
     def __init__(
             self,
@@ -30,6 +33,11 @@ class LogicElement(ABC):
 
         self.input_names = [f"In{i + 1}" for i in range(num_inputs)]
         self.output_names = [f"Out{i + 1}" for i in range(num_outputs)]
+
+        self._modifier = None
+
+    def set_modifier(self, modifier: BehaviorModifier):
+        self._modifier = modifier
 
     def get_input_port_name(self, index):
         return self.input_names[index] if index < len(self.input_names) else f"IN{index}"
@@ -116,13 +124,26 @@ class LogicElement(ABC):
         return result
 
     def compute_outputs(self):
-        pass  # используется для комбинаторных элементов
+        raise NotImplementedError
 
     def compute_next_state(self):
-        pass  # только для stateful
+        # compute основной логики элемента
+        self._compute_main_logic()
+
+        # если есть модификатор — сообщаем ему
+        if self._modifier:
+            self._modifier.compute_next_state(self)
 
     def tick(self):
-        pass  # только для stateful
+        self.output_values = self.next_output_values[:]
+        if self._modifier:
+            self.output_values = self._modifier.apply(self.output_values)
+
+    def _compute_main_logic(self):
+        raise NotImplementedError
+
+    def _apply_main_tick(self):
+        raise NotImplementedError
 
 
 class InputElement(LogicElement):
@@ -208,7 +229,7 @@ class RSTriggerElement(LogicElement):
         self.is_sync = True
         self.state = 0
 
-    def compute_next_state(self):
+    def _compute_main_logic(self):
         s = self.get_input_value(0)
         r = self.get_input_value(1)
         if s == 1 and r == 0:
@@ -217,8 +238,33 @@ class RSTriggerElement(LogicElement):
             self._next_state = 0
         # (s == r == 1) – запрещено, можно игнорировать или хранить prev
 
-    def tick(self):
+    def _apply_main_tick(self):
         self.state = getattr(self, "_next_state", self.state)
         self.output_values[0] = self.state      # Q
         self.output_values[1] = 1 - self.state  # !Q
+
+
+class DTriggerElement(LogicElement):
+    def __init__(self):
+        super().__init__(num_inputs=2, num_outputs=2, name="D Trigger")  # D и CLK
+        self.is_sync = True
+        self.state = 0
+        #self.set_modifier(DelayModifier(delay_ticks=10))  # Задержка по желанию
+
+    def compute_next_state(self):
+        d = self.get_input_value(0)
+        clk = self.get_input_value(1)
+        if clk == 1:
+            self._next_state = d
+        else:
+            self._next_state = self.state  # Не меняем состояние, если CLK == 0
+
+    def tick(self):
+        self.state = getattr(self, "_next_state", self.state)
+        self.next_output_values = [self.state, 1 - self.state]
+        #print(self._modifier.tick_count)
+        super().tick()
+
+
+
 

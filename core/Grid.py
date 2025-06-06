@@ -142,6 +142,20 @@ class Grid:
                     return False
         return True
 
+    def tick_once(self):
+        # Сначала комбинаторные
+        for e in self.elements:
+            if not getattr(e, 'is_sync', False):
+                e.compute_outputs()
+
+        # Затем — синхронные
+        for e in self.elements:
+            if getattr(e, 'is_sync', False):
+                e.compute_next_state()
+        for e in self.elements:
+            if getattr(e, 'is_sync', False):
+                e.tick()
+
     def compute_outputs(self, input_values: Dict[InputElement, int], max_iterations: int = 10):
         for inp, val in input_values.items():
             inp.set_value(val)
@@ -163,7 +177,7 @@ class Grid:
             return None  # Комбинаторная часть не стабилизировалась
 
         # 2. Затем обрабатываем stateful-часть (триггеры и модификаторы)
-        for _ in range(max_iterations):
+        for _ in range(1): # max_iterations
             for e in stateful_elements:
                 e.compute_next_state()
             for e in stateful_elements:
