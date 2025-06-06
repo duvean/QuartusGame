@@ -16,6 +16,7 @@ class LogicElement(ABC):
         self.height = height
         self.position: Optional[Tuple[int, int]] = None
         self.name = name
+        self.is_sync = False
 
         # Модифицировано: теперь каждый вход может иметь несколько соединений
         self.input_connections: List[List[Tuple['LogicElement', int]]] = [
@@ -24,7 +25,8 @@ class LogicElement(ABC):
         self.output_connections: List[List[Tuple['LogicElement', int]]] = [
             [] for _ in range(num_outputs)
         ]
-        self.output_values: List[int] = [0] * num_outputs
+        self.output_values: List[int] = [0] * self.num_outputs
+        self.next_output_values: List[int] = [0] * self.num_outputs
 
         self.input_names = [f"In{i + 1}" for i in range(num_inputs)]
         self.output_names = [f"Out{i + 1}" for i in range(num_outputs)]
@@ -113,9 +115,14 @@ class LogicElement(ABC):
                     break
         return result
 
-    @abstractmethod
     def compute_outputs(self):
-        pass
+        pass  # используется для комбинаторных элементов
+
+    def compute_next_state(self):
+        pass  # только для stateful
+
+    def tick(self):
+        pass  # только для stateful
 
 
 class InputElement(LogicElement):
@@ -133,6 +140,9 @@ class InputElement(LogicElement):
         self.output_values[0] = value
 
     def compute_outputs(self):
+        pass
+
+    def tick(self):
         pass
 
 
@@ -191,13 +201,24 @@ class NotElement(LogicElement):
                 self.get_input_value(0) == 0
         ) else 0
 
-class CustomElement(LogicElement):
-    def __init__(self):
-        super().__init__(num_inputs=5, num_outputs=3, name="Custom")
-        self.height = 8
 
-    def compute_outputs(self):
-        self.output_values[0] = 1 if (
-                self.get_input_value(0) == 0
-        ) else 0
+class RSTriggerElement(LogicElement):
+    def __init__(self):
+        super().__init__(num_inputs=2, num_outputs=2, name="RS Trigger")
+        self.is_sync = True
+        self.state = 0
+
+    def compute_next_state(self):
+        s = self.get_input_value(0)
+        r = self.get_input_value(1)
+        if s == 1 and r == 0:
+            self._next_state = 1
+        elif s == 0 and r == 1:
+            self._next_state = 0
+        # (s == r == 1) – запрещено, можно игнорировать или хранить prev
+
+    def tick(self):
+        self.state = getattr(self, "_next_state", self.state)
+        self.output_values[0] = self.state      # Q
+        self.output_values[1] = 1 - self.state  # !Q
 

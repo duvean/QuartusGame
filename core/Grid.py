@@ -135,29 +135,46 @@ class Grid:
 
         return all(out in visited for out in output_elements)
 
-    def compute_outputs(self, input_values: Dict[InputElement, int], max_iterations: int = 10) -> Optional[Dict[OutputElement, int]]:
+    def is_stable(self):
+        for e in self.elements:
+            if getattr(e, "is_sync", False):
+                if e.output_values != getattr(e, "prev_output_values", []):
+                    return False
+        return True
+
+    def compute_outputs(self, input_values: Dict[InputElement, int], max_iterations: int = 10):
         for inp, val in input_values.items():
             inp.set_value(val)
 
-        output_elements = self.get_output_elements()
-        previous_values = {out: None for out in output_elements}
+        # Разделение на типы
+        stateless_elements = [e for e in self.elements if not getattr(e, 'is_sync', False)]
+        stateful_elements = [e for e in self.elements if getattr(e, 'is_sync', False)]
 
+        # 1. Сначала стабилизируем комбинаторную часть
         for _ in range(max_iterations):
-            for element in self.elements:
-                element.compute_outputs()
+            prev_outputs = [(e, list(e.output_values)) for e in stateless_elements]
 
-            stable = True
-            for out in output_elements:
-                if out.value != previous_values[out]:
-                    stable = False
-                previous_values[out] = out.value
+            for e in stateless_elements:
+                e.compute_outputs()
 
-            if stable:
+            if all(e.output_values == old for e, old in prev_outputs):
                 break
         else:
-            return None
+            return None  # Комбинаторная часть не стабилизировалась
 
-        return {out: out.value for out in output_elements}
+        # 2. Затем обрабатываем stateful-часть (триггеры и модификаторы)
+        for _ in range(max_iterations):
+            for e in stateful_elements:
+                e.compute_next_state()
+            for e in stateful_elements:
+                e.tick()
+
+            if self.is_stable():
+                break
+        else:
+            return None  # Stateful часть не стабилизировалась
+
+        return {out: out.value for out in self.get_output_elements()}
 
     def auto_test(self) -> List[Tuple[Tuple[int, ...], Tuple[int, ...], Tuple[int, ...] | Tuple[str, ...]]]:
         if not self.level:
@@ -170,19 +187,27 @@ class Grid:
             input_elements = [input_elements_by_name[name] for name in self.level.input_names]
             output_elements = [output_elements_by_name[name] for name in self.level.output_names]
         except KeyError:
-            # Не возвращаем ошибки — это обработает UI
             return []
+
+        # Сохраняем текущее состояние всех элементов (только выходы и внутренности)
+        saved_states = {}
+        for e in self.elements:
+            saved_states[e] = {
+                'outputs': list(e.output_values),
+                'internal': getattr(e, 'save_state', lambda: None)()
+            }
 
         errors = []
 
         for combo in itertools.product([0, 1], repeat=len(input_elements)):
             input_mapping = {inp: combo[i] for i, inp in enumerate(input_elements)}
-            expected = self.level.truth_table.get(combo, None)
+            actual = self.compute_outputs(input_mapping)
 
+            expected = self.level.truth_table.get(combo, None)
+            print(f'Отладка: exp{expected}, act{actual}')
             if expected is None:
                 continue
 
-            actual = self.compute_outputs(input_mapping)
             if actual is None:
                 errors.append((combo, expected, ("Cycle",)))
                 continue
@@ -190,6 +215,14 @@ class Grid:
             actual_values = tuple(actual[out] for out in output_elements)
             if actual_values != expected:
                 errors.append((combo, expected, actual_values))
+
+        # Восстановление состояния
+        for e in self.elements:
+            e.output_values = list(saved_states[e]['outputs'])
+            if 'internal' in saved_states[e]:
+                restore = getattr(e, 'load_state', None)
+                if callable(restore):
+                    restore(saved_states[e]['internal'])
 
         return errors
 
@@ -202,7 +235,20 @@ class Grid:
                     "position": e.position,
                     "input_names": e.input_names,
                     "output_names": e.output_names,
-                    "subgrid": e._subgrid.to_dict() if hasattr(e, "_subgrid") else None
+                    "subgrid": (
+                        e._subgrid.to_dict()
+                        if hasattr(e, "_subgrid") else None
+                    ),
+                    "port_names": {
+                        "inputs": sorted(
+                            [(el.name, el.position[1]) for el in e._subgrid.elements if isinstance(el, InputElement)],
+                            key=lambda x: x[1]
+                        ),
+                        "outputs": sorted(
+                            [(el.name, el.position[1]) for el in e._subgrid.elements if isinstance(el, OutputElement)],
+                            key=lambda x: x[1]
+                        )
+                    } if hasattr(e, "_subgrid") else None
                 }
                 for e in self.elements
             ],
@@ -226,18 +272,16 @@ class Grid:
             "OrElement": OrElement,
             "NotElement": NotElement,
             "XorElement": XorElement,
-            # кастомные — добавим ниже
         }
 
         custom_classes = {}
 
-        # 1. Загружаем элементы
         for elem_data in data["elements"]:
             elem_type = elem_data["type"]
             subgrid_data = elem_data.get("subgrid")
 
             if subgrid_data:
-                # Создаём вложенный кастомный класс, если не существует
+                # Генерация кастомного класса
                 if elem_type not in custom_classes:
                     from core.CustomElementFactory import CustomElementFactory
                     CustomClass = CustomElementFactory.make_custom_element_class(elem_type, subgrid_data)
@@ -253,12 +297,18 @@ class Grid:
             element = cls()
             element.name = elem_data["name"]
             element.position = tuple(elem_data["position"])
-            element.input_names = elem_data["input_names"]
-            element.output_names = elem_data["output_names"]
+            element.input_names = elem_data.get("input_names", [])
+            element.output_names = elem_data.get("output_names", [])
+
+            # Восстановим имена портов в том порядке, как в subgrid
+            port_names = elem_data.get("port_names")
+            if port_names:
+                element.input_names = [name for name, _ in port_names["inputs"]]
+                element.output_names = [name for name, _ in port_names["outputs"]]
 
             self.elements.append(element)
 
-        # 2. Загружаем соединения
+        # Подключения
         for conn in data["connections"]:
             src_idx, src_port = conn["source"]
             trg_idx, trg_port = conn["target"]

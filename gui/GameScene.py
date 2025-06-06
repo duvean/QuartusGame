@@ -74,7 +74,7 @@ class GameScene(QGraphicsScene):
 
         def _on_toggle():
             item.logic_element.set_value(1 if button.isChecked() else 0)
-            self.update_outputs()
+            self.tick()
             self.update()
 
         button.toggled.connect(_on_toggle)
@@ -150,7 +150,7 @@ class GameScene(QGraphicsScene):
                             )
                             if self.connect_elements(source, source_idx, target, target_idx):
                                 self.update_connections()
-                                self.update_outputs()
+                                self.tick()
                                 self.update()
                         self.clear_selection()
                     break
@@ -250,7 +250,7 @@ class GameScene(QGraphicsScene):
         element.disconnect_all()
         self.update_connections()
 
-    def update_outputs(self):
+    def tick(self):
         if self.grid:
             input_values = {
                 inp: inp.value()

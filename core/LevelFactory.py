@@ -65,7 +65,7 @@ class LevelFactory:
         input_names = ["A", "B"]
         output_names = ["F"]
         name = "Уровень 4: XOR из базовых"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_5():
