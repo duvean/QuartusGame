@@ -421,19 +421,24 @@ class GameUI(QMainWindow):
         try:
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(grid_dict, f, indent=2)
-                # Перегружаем только что сохранённый элемент
-                new_class = CustomElementFactory.make_custom_element_class(name, grid_dict)
 
-                # Если элемента ещё нет в тулбоксе - добавляем
-                if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
-                    self.game_model.toolbox.append(new_class)
-                    self.toolbox.addItem(new_class.__name__)
+            # Перегружаем только что сохранённый элемент
+            new_class = CustomElementFactory.make_custom_element_class(name, grid_dict)
 
-                # Убираем звёздочку - признак несохранённых изменений
-                tab_name = self.tab_widget.tabText(index)
-                if tab_name.startswith("*"):
-                    self.tab_widget.setTabText(index, tab_name[1:])
-                self.tab_metadata[index]["modified"] = False
+            # Обновляем имена портов согласно subgrid
+            temp_instance = new_class()
+            temp_instance.update_port_names_from_subgrid()
+
+            # Если элемента ещё нет в тулбоксе - добавляем
+            if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
+                self.game_model.toolbox.append(new_class)
+                self.toolbox.addItem(new_class.__name__)
+
+            # Убираем звёздочку - признак несохранённых изменений
+            tab_name = self.tab_widget.tabText(index)
+            if tab_name.startswith("*"):
+                self.tab_widget.setTabText(index, tab_name[1:])
+            self.tab_metadata[index]["modified"] = False
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить элемент: {e}")

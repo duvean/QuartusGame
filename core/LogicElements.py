@@ -246,9 +246,11 @@ class RSTriggerElement(LogicElement):
 
 class DTriggerElement(LogicElement):
     def __init__(self):
-        super().__init__(num_inputs=2, num_outputs=2, name="D Trigger")  # D и CLK
+        super().__init__(num_inputs=2, num_outputs=2, name="DFF")  # D и CLK
         self.is_sync = True
         self.state = 0
+        self.input_names = ['D', 'clk']
+        self.output_names = ['Q', 'Q']
         #self.set_modifier(DelayModifier(delay_ticks=10))  # Задержка по желанию
 
     def compute_next_state(self):

@@ -40,6 +40,19 @@ class CustomElementFactory:
                 # Флаг: нужна ли синхронная обработка
                 self.is_sync = any(getattr(e, "is_sync", False) for e in self._subgrid.elements)
 
+            def update_port_names_from_subgrid(self):
+                inputs = sorted(
+                    [e for e in self._subgrid.elements if isinstance(e, InputElement)],
+                    key=lambda el: el.position[1]
+                )
+                outputs = sorted(
+                    [e for e in self._subgrid.elements if isinstance(e, OutputElement)],
+                    key=lambda el: el.position[1]
+                )
+
+                self.input_names = [e.name for e in inputs]
+                self.output_names = [e.name for e in outputs]
+
             def _set_inputs(self):
                 """Передаёт значения с внешних входов во внутреннюю схему"""
                 input_index = 0

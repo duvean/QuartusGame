@@ -286,6 +286,7 @@ class Grid:
             "OrElement": OrElement,
             "NotElement": NotElement,
             "XorElement": XorElement,
+            "DTriggerElement": DTriggerElement
         }
 
         custom_classes = {}
