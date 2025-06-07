@@ -1,14 +1,13 @@
-from abc import ABC, abstractmethod
-from collections import deque
+from abc import ABC
 from typing import List
 
 
 class BehaviorModifier(ABC):
     def compute_next_state(self, element: 'LogicElement'):
-        pass
+        raise NotImplementedError
 
     def tick(self, element: 'LogicElement'):
-        pass
+        raise NotImplementedError
 
 
 class DelayModifier(BehaviorModifier):

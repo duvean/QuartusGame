@@ -1,11 +1,12 @@
 import math
 
 from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
-     QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
-     QMenu, QDialog, QFormLayout)
+                             QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
+                             QMenu, QDialog, QFormLayout, QSpinBox, QComboBox, QGroupBox, QVBoxLayout)
 from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF
 
+from core.BehaviorModifiers import DelayModifier
 from core.LogicElements import InputElement
 from core.Grid import Grid
 from gui.LogicElementItem import LogicElementItem
@@ -197,32 +198,58 @@ class GameScene(QGraphicsScene):
         dialog = QDialog()
         dialog.setWindowTitle("Редактирование элемента")
 
-        layout = QFormLayout()
+        main_layout = QVBoxLayout()
+        form_layout = QFormLayout()
 
         name_edit = QLineEdit(item.logic_element.name)
         name_edit.selectAll()
-        layout.addRow("Название элемента:", name_edit)
+        form_layout.addRow("Название элемента:", name_edit)
 
         input_port_edits = []
         for i in range(item.logic_element.num_inputs):
             edit = QLineEdit(item.logic_element.get_input_port_name(i))
-            layout.addRow(f"Вход {i}:", edit)
+            form_layout.addRow(f"Вход {i}:", edit)
             input_port_edits.append(edit)
 
         output_port_edits = []
         for i in range(item.logic_element.num_outputs):
             edit = QLineEdit(item.logic_element.get_output_port_name(i))
-            layout.addRow(f"Выход {i}:", edit)
+            form_layout.addRow(f"Выход {i}:", edit)
             output_port_edits.append(edit)
+
+        main_layout.addLayout(form_layout)
+
+        # === Секция модификаторов ===
+        modifier_group = QGroupBox("Модификатор поведения")
+        modifier_layout = QFormLayout()
+
+        modifier_selector = QComboBox()
+        modifier_selector.addItem("Нет", None)
+        modifier_selector.addItem("Задержка (DelayModifier)", "delay")
+
+        delay_spin = QSpinBox()
+        delay_spin.setRange(1, 100)
+        delay_spin.setValue(3)
+        modifier_layout.addRow("Тип модификатора:", modifier_selector)
+        modifier_layout.addRow("Задержка (тик):", delay_spin)
+
+        # Предзаполнить по текущему модификатору
+        current_modifier = getattr(item.logic_element, "_modifier", None)
+        if isinstance(current_modifier, DelayModifier):
+            modifier_selector.setCurrentText("Задержка (DelayModifier)")
+            delay_spin.setValue(current_modifier.delay_ticks)
+
+        modifier_group.setLayout(modifier_layout)
+        main_layout.addWidget(modifier_group)
 
         save_button = QPushButton("Сохранить")
         save_button.clicked.connect(lambda: dialog.accept())
-        layout.addWidget(save_button)
+        main_layout.addWidget(save_button)
 
-        dialog.setLayout(layout)
+        dialog.setLayout(main_layout)
 
         if dialog.exec():
-            # Применяем изменения
+            # Применение имени и портов
             new_name = name_edit.text().strip()
             if new_name != item.logic_element.name:
                 success = self.grid.rename_element(item.logic_element, new_name)
@@ -232,9 +259,15 @@ class GameScene(QGraphicsScene):
 
             for i, edit in enumerate(input_port_edits):
                 item.logic_element.set_input_port_name(i, edit.text().strip())
-
             for i, edit in enumerate(output_port_edits):
                 item.logic_element.set_output_port_name(i, edit.text().strip())
+
+            # Применение модификатора
+            selected_mod = modifier_selector.currentData()
+            if selected_mod == "delay":
+                item.logic_element.set_modifier(DelayModifier(delay_spin.value()))
+            else:
+                item.logic_element.set_modifier(None)
 
             self.update()
 
