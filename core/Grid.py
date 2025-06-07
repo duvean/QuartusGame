@@ -33,7 +33,7 @@ class Grid:
     def generate_unique_name(self, base):
         while True:
             self.name_counter[base] += 1
-            candidate = f"{base}_{self.name_counter[base]}"
+            candidate = f"{base} {self.name_counter[base]}"
             if candidate not in self.existing_names:
                 self.existing_names.add(candidate)
                 return candidate

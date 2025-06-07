@@ -71,9 +71,8 @@ class CustomElementFactory:
                 self.output_values = output_values
 
             def compute_outputs(self):
-                """Используется в комбинаторной фазе"""
                 if self.is_sync:
-                    return  # Не считаем здесь, всё в tick()
+                    return
                 self._set_inputs()
 
                 for _ in range(10):
@@ -84,7 +83,9 @@ class CustomElementFactory:
                     now = [list(e.output_values) for e in self._subgrid.elements if not getattr(e, 'is_sync', False)]
                     if prev == now:
                         break
+
                 self._collect_outputs()
+                self.apply_modifiers()
 
             def compute_next_state(self):
                 """Для stateful-схем"""
@@ -100,6 +101,7 @@ class CustomElementFactory:
                 for e in self._subgrid.elements:
                     e.tick()
                 self._collect_outputs()
+                self.apply_modifiers()
 
         CustomElement.__name__ = class_name
         return CustomElement

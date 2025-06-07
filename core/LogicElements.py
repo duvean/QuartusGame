@@ -53,6 +53,10 @@ class LogicElement(ABC):
     def modifiers(self, value: List[BehaviorModifier]):
         self._modifiers = value
 
+    def apply_modifiers(self):
+        for modifier in self._modifiers:
+            self.output_values = modifier.apply(self.output_values)
+
     def get_input_port_name(self, index):
         return self.input_names[index] if index < len(self.input_names) else f"IN{index}"
 
@@ -147,8 +151,7 @@ class LogicElement(ABC):
 
     def tick(self):
         self.output_values = self.next_output_values[:]
-        for modifier in self._modifiers:
-            self.output_values = modifier.apply(self.output_values)
+        self.apply_modifiers()
 
 
 class InputElement(LogicElement):
@@ -270,7 +273,3 @@ class DTriggerElement(LogicElement):
         self.state = getattr(self, "_next_state", self.state)
         self.next_output_values = [self.state, 1 - self.state]
         super().tick()
-
-
-
-
