@@ -127,10 +127,6 @@ class LogicElement(ABC):
         raise NotImplementedError
 
     def compute_next_state(self):
-        # compute основной логики элемента
-        self._compute_main_logic()
-
-        # если есть модификатор — сообщаем ему
         if self._modifier:
             self._modifier.compute_next_state(self)
 
@@ -138,12 +134,6 @@ class LogicElement(ABC):
         self.output_values = self.next_output_values[:]
         if self._modifier:
             self.output_values = self._modifier.apply(self.output_values)
-
-    def _compute_main_logic(self):
-        raise NotImplementedError
-
-    def _apply_main_tick(self):
-        raise NotImplementedError
 
 
 class InputElement(LogicElement):
@@ -229,19 +219,19 @@ class RSTriggerElement(LogicElement):
         self.is_sync = True
         self.state = 0
 
-    def _compute_main_logic(self):
+    def compute_next_state(self):
         s = self.get_input_value(0)
         r = self.get_input_value(1)
         if s == 1 and r == 0:
             self._next_state = 1
         elif s == 0 and r == 1:
             self._next_state = 0
-        # (s == r == 1) – запрещено, можно игнорировать или хранить prev
 
-    def _apply_main_tick(self):
+    def tick(self):
         self.state = getattr(self, "_next_state", self.state)
         self.output_values[0] = self.state      # Q
         self.output_values[1] = 1 - self.state  # !Q
+        super().tick()
 
 
 class DTriggerElement(LogicElement):
@@ -264,7 +254,6 @@ class DTriggerElement(LogicElement):
     def tick(self):
         self.state = getattr(self, "_next_state", self.state)
         self.next_output_values = [self.state, 1 - self.state]
-        #print(self._modifier.tick_count)
         super().tick()
 
 
