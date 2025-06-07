@@ -34,10 +34,24 @@ class LogicElement(ABC):
         self.input_names = [f"In{i + 1}" for i in range(num_inputs)]
         self.output_names = [f"Out{i + 1}" for i in range(num_outputs)]
 
-        self._modifier = None
+        self._modifiers: List[BehaviorModifier] = []
 
-    def set_modifier(self, modifier: BehaviorModifier):
-        self._modifier = modifier
+    def add_modifier(self, modifier: BehaviorModifier):
+        self._modifiers.append(modifier)
+
+    def remove_modifier(self, modifier: BehaviorModifier):
+        self._modifiers.remove(modifier)
+
+    def clear_modifiers(self):
+        self._modifiers.clear()
+
+    @property
+    def modifiers(self) -> List[BehaviorModifier]:
+        return self._modifiers
+
+    @modifiers.setter
+    def modifiers(self, value: List[BehaviorModifier]):
+        self._modifiers = value
 
     def get_input_port_name(self, index):
         return self.input_names[index] if index < len(self.input_names) else f"IN{index}"
@@ -124,16 +138,17 @@ class LogicElement(ABC):
         return result
 
     def compute_outputs(self):
-        raise NotImplementedError
+        for modifier in self._modifiers:
+            modifier.compute_next_state(self)
 
     def compute_next_state(self):
-        if self._modifier:
-            self._modifier.compute_next_state(self)
+        for modifier in self._modifiers:
+            modifier.compute_next_state(self)
 
     def tick(self):
         self.output_values = self.next_output_values[:]
-        if self._modifier:
-            self.output_values = self._modifier.apply(self.output_values)
+        for modifier in self._modifiers:
+            self.output_values = modifier.apply(self.output_values)
 
 
 class InputElement(LogicElement):

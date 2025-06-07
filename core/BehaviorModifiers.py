@@ -1,30 +1,53 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List
+
+from core.BehaviorModifiersRegister import register_modifier
 
 
 class BehaviorModifier(ABC):
-    def compute_next_state(self, element: 'LogicElement'):
+    @abstractmethod
+    def apply(self, output_values: List[int]) -> List[int]:
         raise NotImplementedError
 
-    def tick(self, element: 'LogicElement'):
+    def compute_outputs(self, input_values: List[int]) -> List[int]:
+        raise NotImplementedError
+
+    def to_dict(self) -> dict:
+        raise NotImplementedError
+
+    @classmethod
+    def from_dict(cls, data: dict):
         raise NotImplementedError
 
 
+@register_modifier("Delay")
 class DelayModifier(BehaviorModifier):
-    def __init__(self, delay_ticks: int):
-        self.delay_ticks = delay_ticks
+    def __init__(self):
+        self.delay_ticks = 1  # Значение по умолчанию
         self.tick_count = 0
         self.queue = []
 
+    def set_params(self, delay_ticks: int):
+        self.delay_ticks = delay_ticks
+
     def apply(self, output_values: List[int]) -> List[int]:
-        self.queue.append(output_values[:])  # Копия выходных значений
+        self.queue.append(output_values[:])
         self.tick_count += 1
 
         if self.tick_count <= self.delay_ticks:
-            return [0] * len(output_values)  # Пока не прошло достаточно тиков, выдаём нули
+            return [0] * len(output_values)
 
         return self.queue.pop(0)
 
     def reset(self):
         self.tick_count = 0
         self.queue.clear()
+
+    def to_dict(self):
+        return {"type": "delay", "ticks": self.delay_ticks}
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        mod = cls()
+        mod.delay_ticks = data.get("ticks", 1)
+        return mod
