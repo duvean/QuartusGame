@@ -2,14 +2,22 @@ import math
 
 from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
                              QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
-                             QMenu, QDialog, QFormLayout, QSpinBox, QComboBox, QGroupBox, QVBoxLayout)
+                             QMenu, QDialog, QFormLayout, QSpinBox, QComboBox, QGroupBox, QVBoxLayout, QDialogButtonBox,
+                             QTabWidget, QLabel, QWidget, QHBoxLayout, QListWidgetItem, QListWidget)
 from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF
 
 from core.BehaviorModifiers import DelayModifier
 from core.LogicElements import InputElement
 from core.Grid import Grid
+from gui.BehaviorModifiersView import ModifierViewFactory
 from gui.LogicElementItem import LogicElementItem
+
+from core.BehaviorModifiersRegister import (
+    get_available_modifier_names,
+    create_modifier_by_name,
+    create_modifier_editor,
+)
 
 CELL_SIZE = 15
 
@@ -195,81 +203,10 @@ class GameScene(QGraphicsScene):
             self._parent_ui.notify_scene_modified(self)
 
     def show_edit_dialog(self, item: LogicElementItem):
-        dialog = QDialog()
-        dialog.setWindowTitle("Редактирование элемента")
-
-        main_layout = QVBoxLayout()
-        form_layout = QFormLayout()
-
-        name_edit = QLineEdit(item.logic_element.name)
-        name_edit.selectAll()
-        form_layout.addRow("Название элемента:", name_edit)
-
-        input_port_edits = []
-        for i in range(item.logic_element.num_inputs):
-            edit = QLineEdit(item.logic_element.get_input_port_name(i))
-            form_layout.addRow(f"Вход {i}:", edit)
-            input_port_edits.append(edit)
-
-        output_port_edits = []
-        for i in range(item.logic_element.num_outputs):
-            edit = QLineEdit(item.logic_element.get_output_port_name(i))
-            form_layout.addRow(f"Выход {i}:", edit)
-            output_port_edits.append(edit)
-
-        main_layout.addLayout(form_layout)
-
-        # === Секция модификаторов ===
-        modifier_group = QGroupBox("Модификатор поведения")
-        modifier_layout = QFormLayout()
-
-        modifier_selector = QComboBox()
-        modifier_selector.addItem("Нет", None)
-        modifier_selector.addItem("Задержка (DelayModifier)", "delay")
-
-        delay_spin = QSpinBox()
-        delay_spin.setRange(1, 100)
-        delay_spin.setValue(3)
-        modifier_layout.addRow("Тип модификатора:", modifier_selector)
-        modifier_layout.addRow("Задержка (тик):", delay_spin)
-
-        # Предзаполнить по текущему модификатору
-        current_modifier = getattr(item.logic_element, "_modifier", None)
-        if isinstance(current_modifier, DelayModifier):
-            modifier_selector.setCurrentText("Задержка (DelayModifier)")
-            delay_spin.setValue(current_modifier.delay_ticks)
-
-        modifier_group.setLayout(modifier_layout)
-        main_layout.addWidget(modifier_group)
-
-        save_button = QPushButton("Сохранить")
-        save_button.clicked.connect(lambda: dialog.accept())
-        main_layout.addWidget(save_button)
-
-        dialog.setLayout(main_layout)
-
+        dialog = EditElementInstanceDialog(self.grid, item.logic_element)
         if dialog.exec():
-            # Применение имени и портов
-            new_name = name_edit.text().strip()
-            if new_name != item.logic_element.name:
-                success = self.grid.rename_element(item.logic_element, new_name)
-                if not success:
-                    QMessageBox.warning(None, "Ошибка", "Имя должно быть уникальным.")
-                    return
-
-            for i, edit in enumerate(input_port_edits):
-                item.logic_element.set_input_port_name(i, edit.text().strip())
-            for i, edit in enumerate(output_port_edits):
-                item.logic_element.set_output_port_name(i, edit.text().strip())
-
-            # Применение модификатора
-            selected_mod = modifier_selector.currentData()
-            if selected_mod == "delay":
-                item.logic_element.set_modifier(DelayModifier(delay_spin.value()))
-            else:
-                item.logic_element.set_modifier(None)
-
-            self.update()
+            if dialog.apply_changes():
+                self.update()
 
     def clear_selection(self):
         if self.selected_element:
@@ -333,3 +270,153 @@ class GameScene(QGraphicsScene):
                             path_item.setPen(QPen(Qt.GlobalColor.black, 2))
                             self.connections.append(path_item)
                             self.addItem(path_item)
+
+
+class EditElementInstanceDialog(QDialog):
+    def __init__(self, grid, logic_element, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Редактирование элемента")
+
+        self.grid = grid
+        self.logic_element = logic_element
+
+        self._modifier_editors = {}
+
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        self.tabs = QTabWidget()
+
+        self.tabs.addTab(self._create_general_tab(), "Общие")
+        self.tabs.addTab(self._create_modifiers_tab(), "Модификаторы")
+
+        layout.addWidget(self.tabs)
+
+        buttons = QHBoxLayout()
+        save_btn = QPushButton("Сохранить")
+        save_btn.clicked.connect(self.accept)
+        cancel_btn = QPushButton("Отмена")
+        cancel_btn.clicked.connect(self.reject)
+        buttons.addWidget(save_btn)
+        buttons.addWidget(cancel_btn)
+        layout.addLayout(buttons)
+
+    def _create_general_tab(self):
+        self._name_edit = QLineEdit(self.logic_element.name)
+        self._name_edit.selectAll()
+
+        self._input_port_edits = []
+        self._output_port_edits = []
+
+        form = QFormLayout()
+        form.addRow("Название элемента:", self._name_edit)
+
+        for i in range(self.logic_element.num_inputs):
+            edit = QLineEdit(self.logic_element.get_input_port_name(i))
+            self._input_port_edits.append(edit)
+            form.addRow(f"Вход {i}:", edit)
+
+        for i in range(self.logic_element.num_outputs):
+            edit = QLineEdit(self.logic_element.get_output_port_name(i))
+            self._output_port_edits.append(edit)
+            form.addRow(f"Выход {i}:", edit)
+
+        container = QWidget()
+        container.setLayout(form)
+        return container
+
+    def _create_modifiers_tab(self):
+        self._modifier_list = QListWidget()
+
+        for mod in self.logic_element.modifiers:
+            editor = create_modifier_editor(mod)
+            if editor:
+                self._modifier_editors[mod] = editor
+                self._modifier_list.addItem(QListWidgetItem(mod.__class__.__name__))
+
+        self._modifier_editor_container = QWidget()
+        self._modifier_editor_layout = QVBoxLayout(self._modifier_editor_container)
+        self._modifier_editor_container.setLayout(self._modifier_editor_layout)
+
+        self._modifier_list.currentRowChanged.connect(self._on_modifier_selected)
+
+        add_layout = QHBoxLayout()
+        self._modifier_combo = QComboBox()
+        self._modifier_combo.addItems(get_available_modifier_names())
+        add_btn = QPushButton("Добавить")
+        add_btn.clicked.connect(self._on_add_modifier)
+        del_btn = QPushButton("Удалить")
+        del_btn.clicked.connect(self._on_remove_modifier)
+        add_layout.addWidget(self._modifier_combo)
+        add_layout.addWidget(add_btn)
+        add_layout.addWidget(del_btn)
+
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(self._modifier_list)
+        main_layout.addLayout(add_layout)
+        main_layout.addWidget(self._modifier_editor_container)
+
+        container = QWidget()
+        container.setLayout(main_layout)
+        return container
+
+    def _on_modifier_selected(self, index):
+        for i in reversed(range(self._modifier_editor_layout.count())):
+            widget = self._modifier_editor_layout.itemAt(i).widget()
+            if widget:
+                widget.setParent(None)
+
+        if index < 0 or index >= len(self.logic_element.modifiers):
+            return
+
+        mod = self.logic_element.modifiers[index]
+        editor = self._modifier_editors.get(mod)
+        if editor:
+            self._modifier_editor_layout.addWidget(editor)
+
+    def _on_add_modifier(self):
+        name = self._modifier_combo.currentText()
+        new_mod = create_modifier_by_name(name)
+        if new_mod is None:
+            return
+
+        editor = create_modifier_editor(new_mod)
+        if editor is None:
+            return
+
+        self.logic_element.modifiers.append(new_mod)
+        self._modifier_editors[new_mod] = editor
+        self._modifier_list.addItem(name)
+
+    def _on_remove_modifier(self):
+        index = self._modifier_list.currentRow()
+        if index < 0:
+            return
+
+        mod = self.logic_element.modifiers.pop(index)
+        self._modifier_editors.pop(mod, None)
+        self._modifier_list.takeItem(index)
+        self._on_modifier_selected(-1)
+
+    def apply_changes(self):
+        new_name = self._name_edit.text().strip()
+        if new_name != self.logic_element.name:
+            success = self.grid.rename_element(self.logic_element, new_name)
+            if not success:
+                QMessageBox.warning(self, "Ошибка", "Имя должно быть уникальным.")
+                return False
+
+        for i, edit in enumerate(self._input_port_edits):
+            self.logic_element.set_input_port_name(i, edit.text().strip())
+
+        for i, edit in enumerate(self._output_port_edits):
+            self.logic_element.set_output_port_name(i, edit.text().strip())
+
+        # Применяем параметры модификаторов
+        for i, mod in enumerate(self.logic_element.modifiers):
+            editor = self._modifier_editors.get(mod)
+            if editor:
+                self.logic_element.modifiers[i] = editor.get_modifier()
+
+        return True
