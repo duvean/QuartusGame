@@ -119,6 +119,11 @@ class DefaultElementPainter(AbstractElementPainter):
             spacing = min(CELL_SIZE, max_total_spacing / (num_ports - 1))
             group_height = spacing * (num_ports - 1)
             start_y = inner_rect.top() + (total_height - group_height) / 2
+
+            if num_ports == 2:
+                start_y -= 2
+                spacing += 5
+
             return [start_y + i * spacing for i in range(num_ports)]
 
         input_ys = get_centered_ys(element.num_inputs)

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
 
 from core.BehaviorModifiers import BehaviorModifier, DelayModifier
@@ -16,7 +17,7 @@ class LogicElement(ABC):
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.width = width
-        self.height = height
+        self.height = ceil(max(num_inputs, num_outputs) * 1.5) + 1
         self.position: Optional[Tuple[int, int]] = None
         self.name = name
         self.is_sync = False
@@ -233,22 +234,33 @@ class NotElement(LogicElement):
 
 class RSTriggerElement(LogicElement):
     def __init__(self):
-        super().__init__(num_inputs=2, num_outputs=2, name="RS Trigger")
+        super().__init__(num_inputs=3, num_outputs=2, name="RSFF")
         self.is_sync = True
         self.state = 0
+        self.input_names = ['R', 'S', 'clk']
+        self.output_names = ['Q', 'Q̅']
 
     def compute_next_state(self):
-        s = self.get_input_value(0)
-        r = self.get_input_value(1)
-        if s == 1 and r == 0:
-            self._next_state = 1
-        elif s == 0 and r == 1:
-            self._next_state = 0
+        r = self.get_input_value(0)
+        s = self.get_input_value(1)
+        clk = self.get_input_value(2)
+
+        if clk == 1:
+            if s == 1 and r == 0:
+                self._next_state = 1
+            elif s == 0 and r == 1:
+                self._next_state = 0
+            elif s == 0 and r == 0:
+                self._next_state = self.state
+            else:
+                # s == 1 and r == 1
+                self._next_state = 0
+        else:
+            self._next_state = self.state
 
     def tick(self):
         self.state = getattr(self, "_next_state", self.state)
-        self.output_values[0] = self.state      # Q
-        self.output_values[1] = 1 - self.state  # !Q
+        self.next_output_values = [self.state, 1 - self.state]
         super().tick()
 
 
@@ -258,7 +270,7 @@ class DTriggerElement(LogicElement):
         self.is_sync = True
         self.state = 0
         self.input_names = ['D', 'clk']
-        self.output_names = ['Q', 'Q']
+        self.output_names = ['Q', 'Q̅']
         #self.set_modifier(DelayModifier(delay_ticks=10))  # Задержка по желанию
 
     def compute_next_state(self):
