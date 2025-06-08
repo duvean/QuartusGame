@@ -7,23 +7,37 @@ from core.BehaviorModifiersRegister import register_modifier
 class BehaviorModifier(ABC):
     @abstractmethod
     def apply(self, output_values: List[int]) -> List[int]:
+        """
+        Применяет модификатор к выходным значениям.
+        """
         raise NotImplementedError
 
     def compute_outputs(self, input_values: List[int]) -> List[int]:
+        """
+        Расчитывает значения в цепи с модифицированными условиями.
+        """
         raise NotImplementedError
 
+    @abstractmethod
     def to_dict(self) -> dict:
-        raise NotImplementedError
+        """
+        Возвращает сериализованный словарь, включая тип и параметры.
+        """
+        pass
 
     @classmethod
-    def from_dict(cls, data: dict):
-        raise NotImplementedError
+    @abstractmethod
+    def from_dict(cls, data: dict) -> 'BehaviorModifier':
+        """
+        Создает модификатор из сериализованного словаря.
+        """
+        pass
 
 
 @register_modifier("Delay")
 class DelayModifier(BehaviorModifier):
     def __init__(self):
-        self.delay_ticks = 1  # Значение по умолчанию
+        self.delay_ticks = 1
         self.tick_count = 0
         self.queue = []
 
@@ -44,10 +58,10 @@ class DelayModifier(BehaviorModifier):
         self.queue.clear()
 
     def to_dict(self):
-        return {"type": "delay", "ticks": self.delay_ticks}
+        return {"delay_ticks": self.delay_ticks}
 
     @classmethod
-    def from_dict(cls, data: dict):
-        mod = cls()
-        mod.delay_ticks = data.get("ticks", 1)
-        return mod
+    def from_dict(cls, data):
+        instance = cls()
+        instance.set_params(data.get("delay_ticks", 1))
+        return instance

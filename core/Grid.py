@@ -1,6 +1,8 @@
 import itertools
 from collections import deque, defaultdict
 
+from core.BehaviorModifiers import *
+from core.BehaviorModifiersRegister import *
 from core.LogicElements import *
 from core.Level import Level
 
@@ -262,7 +264,16 @@ class Grid:
                             [(el.name, el.position[1]) for el in e._subgrid.elements if isinstance(el, OutputElement)],
                             key=lambda x: x[1]
                         )
-                    } if hasattr(e, "_subgrid") else None
+                    } if hasattr(e, "_subgrid") else None,
+                    "modifiers": [
+                        {
+                            "name": name,
+                            "data": modifier.to_dict()
+                        }
+                        for modifier in e.modifiers
+                        for name, entry in MODIFIERS_REGISTER.items()
+                        if isinstance(modifier, entry["class"])
+                    ]
                 }
                 for e in self.elements
             ],
@@ -296,7 +307,6 @@ class Grid:
             subgrid_data = elem_data.get("subgrid")
 
             if subgrid_data:
-                # Генерация кастомного класса
                 if elem_type not in custom_classes:
                     from core.CustomElementFactory import CustomElementFactory
                     CustomClass = CustomElementFactory.make_custom_element_class(elem_type, subgrid_data)
@@ -315,11 +325,24 @@ class Grid:
             element.input_names = elem_data.get("input_names", [])
             element.output_names = elem_data.get("output_names", [])
 
-            # Восстановим имена портов в том порядке, как в subgrid
             port_names = elem_data.get("port_names")
             if port_names:
                 element.input_names = [name for name, _ in port_names["inputs"]]
                 element.output_names = [name for name, _ in port_names["outputs"]]
+
+            # Загрузка модификаторов
+            for mod_data in elem_data.get("modifiers", []):
+                mod_name = mod_data.get("name")
+                mod_payload = mod_data.get("data", {})
+                modifier = create_modifier_by_name(mod_name)
+                if modifier and hasattr(modifier, "from_dict"):
+                    modifier = modifier.from_dict(mod_payload) or modifier
+                elif modifier:
+                    # На случай если from_dict вернёт None, но данные есть
+                    for k, v in mod_payload.items():
+                        setattr(modifier, k, v)
+                if modifier:
+                    element.add_modifier(modifier)
 
             self.elements.append(element)
 

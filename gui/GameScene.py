@@ -2,15 +2,13 @@ import math
 
 from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
                              QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
-                             QMenu, QDialog, QFormLayout, QSpinBox, QComboBox, QGroupBox, QVBoxLayout, QDialogButtonBox,
-                             QTabWidget, QLabel, QWidget, QHBoxLayout, QListWidgetItem, QListWidget)
+                             QMenu, QDialog, QFormLayout, QComboBox, QVBoxLayout, QTabWidget, QWidget,
+                             QHBoxLayout, QListWidgetItem, QListWidget)
 from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath
 from PyQt6.QtCore import Qt, QPointF
 
-from core.BehaviorModifiers import DelayModifier
 from core.LogicElements import InputElement
 from core.Grid import Grid
-from gui.BehaviorModifiersView import ModifierViewFactory
 from gui.LogicElementItem import LogicElementItem
 
 from core.BehaviorModifiersRegister import (
@@ -206,6 +204,7 @@ class GameScene(QGraphicsScene):
         dialog = EditElementInstanceDialog(self.grid, item.logic_element)
         if dialog.exec():
             if dialog.apply_changes():
+                self.notify_modified()
                 self.update()
 
     def clear_selection(self):
@@ -276,12 +275,9 @@ class EditElementInstanceDialog(QDialog):
     def __init__(self, grid, logic_element, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Редактирование элемента")
-
         self.grid = grid
         self.logic_element = logic_element
-
         self._modifier_editors = {}
-
         self._setup_ui()
 
     def _setup_ui(self):

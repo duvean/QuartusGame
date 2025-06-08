@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
 
-from core.BehaviorModifiers import BehaviorModifier, DelayModifier
+from core.BehaviorModifiers import BehaviorModifier
 
 
 class LogicElement(ABC):
