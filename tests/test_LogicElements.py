@@ -12,7 +12,7 @@ def test_disconnect():
     b = AndElement()
     a.connect_output(0, b, 0)
     a.disconnect_all()
-    assert b.input_connections[0] is None
+    assert b.input_connections[0] == []
     assert len(a.output_connections[0]) == 0
 
 def test_input_element():
