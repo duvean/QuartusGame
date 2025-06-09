@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
 
-from core.BehaviorModifiers import BehaviorModifier
+from core.BehaviorModifiers import *
 
 
 class LogicElement(ABC):
@@ -284,4 +284,21 @@ class DTriggerElement(LogicElement):
     def tick(self):
         self.state = getattr(self, "_next_state", self.state)
         self.next_output_values = [self.state, 1 - self.state]
+        super().tick()
+
+
+class SwitchingAndElement(AndElement):
+    def __init__(self):
+        super().__init__()
+        self.is_sync = True
+        self.input_names = ['A', 'B']
+        self.output_names = ['F']
+        self.next_output_values = [0] * self.num_outputs
+        self.add_modifier(SwitchAfterTicksModifier(ticks=30))
+
+    def compute_next_state(self):
+        super().compute_outputs()
+        self.next_output_values = self.output_values[:]
+
+    def tick(self):
         super().tick()

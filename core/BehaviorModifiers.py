@@ -65,3 +65,30 @@ class DelayModifier(BehaviorModifier):
         instance = cls()
         instance.set_params(data.get("delay_ticks", 1))
         return instance
+
+
+@register_modifier("SwitchAfterTicks")
+class SwitchAfterTicksModifier(BehaviorModifier):
+    def __init__(self, ticks: int = 60):
+        self.max_ticks = ticks
+        self.tick_count = 0
+
+    def set_params(self, ticks: int):
+        self.max_ticks = ticks
+
+    def apply(self, output_values: List[int]) -> List[int]:
+        self.tick_count += 1
+
+        if self.tick_count <= self.max_ticks:
+            return output_values
+        else:
+            return [1] * len(output_values)
+
+    def to_dict(self) -> dict:
+        return {"max_ticks": self.max_ticks}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'SwitchAfterTicksModifier':
+        instance = cls()
+        instance.set_params(data.get("max_ticks", 60))
+        return instance
