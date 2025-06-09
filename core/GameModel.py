@@ -33,17 +33,6 @@ class GameModel:
                 except Exception as e:
                     print(f"Не удалось загрузить {filename}: {e}")
 
-    @staticmethod
-    def connect_elements(source: LogicElement, source_port: int,
-                         target: LogicElement, target_port: int) -> bool:
-        """Соединяет выход source с входом target"""
-        return source.connect_output(source_port, target, target_port)
-
-    @staticmethod
-    def disconnect_port(source: LogicElement, port_type: str, port: int) -> bool:
-        """Удаляет связи с выбранным портом"""
-        return source.disconnect_port(port_type, port)
-
     def run_auto_test(self) -> List[Tuple]:
         """Запускает автоматическое тестирование схемы"""
         if self.current_level:

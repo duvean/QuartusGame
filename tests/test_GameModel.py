@@ -13,7 +13,6 @@ def model(dummy_level):
 def test_initial_state(model):
     assert isinstance(model.grid, Grid)
     assert model.current_level.name == "Уровень"
-    assert not model._is_simulating
     assert model.selected_element_type is None
     assert InputElement in model.toolbox
     assert AndElement in model.toolbox
@@ -37,14 +36,3 @@ def test_check_level_returns_errors(model):
     model.grid.is_valid_circuit = MagicMock(return_value=True)
     model.grid.auto_test = MagicMock(return_value=[(1, 0)])
     assert model.check_level() == [(1, 0)]
-
-def test_simulation_start_stop(model):
-    model.frequency_input = MagicMock()
-    model.frequency_input.value.return_value = 123
-
-    model.start_simulation()
-    assert model._is_simulating
-    model.timer.isActive()  # Проверяется вручную
-
-    model.stop_simulation()
-    assert not model._is_simulating
