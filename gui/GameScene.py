@@ -4,10 +4,10 @@ from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
                              QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
                              QMenu, QDialog, QFormLayout, QComboBox, QVBoxLayout, QTabWidget, QWidget,
                              QHBoxLayout, QListWidgetItem, QListWidget)
-from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath
+from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath, QIcon, QIntValidator
 from PyQt6.QtCore import Qt, QPointF
 
-from core.LogicElements import InputElement
+from core.LogicElements import InputElement, ClockGeneratorElement
 from core.Grid import Grid
 from gui.LogicElementItem import LogicElementItem
 
@@ -62,6 +62,9 @@ class GameScene(QGraphicsScene):
         self.notify_modified()
         if isinstance(item, LogicElementItem) and isinstance(item.logic_element, InputElement):
             self._add_input_switch(item)
+        elif isinstance(item, LogicElementItem) and isinstance(item.logic_element, ClockGeneratorElement):
+            item.logic_element.get_timer().timeout.connect(self.update_scene)
+            self._add_clock_controls(item)
 
     def _add_input_switch(self, item: LogicElementItem):
         button = QCheckBox()
@@ -81,10 +84,103 @@ class GameScene(QGraphicsScene):
 
         def _on_toggle():
             item.logic_element.set_value(1 if button.isChecked() else 0)
-            self.tick()
-            self.update()
+            self.update_scene()
 
         button.toggled.connect(_on_toggle)
+
+    def _add_clock_controls(self, item: LogicElementItem):
+        from PyQt6.QtWidgets import QPushButton
+
+        # Поле ввода интервала
+        interval_input = QLineEdit(str(item.logic_element.interval_ms))
+        interval_input.setFixedWidth(50)
+        interval_input.setFixedHeight(15)
+        interval_input.setStyleSheet("""
+                        QLineEdit {
+                            background: #fffff0;
+                            border: 1px solid #cccccc;
+                        }
+                    """)
+        interval_input.setValidator(QIntValidator(10, 10000))  # от 10 до 10_000 мс
+        interval_proxy = QGraphicsProxyWidget(item)
+        interval_proxy.setWidget(interval_input)
+
+        # Кнопка "Старт"
+        start_button = QPushButton()
+        start_button.setIcon(QIcon.fromTheme("media-playback-start"))
+        start_button.setToolTip("Start Clock")
+        start_button.setObjectName("startButton")
+        start_button.setStyleSheet("background-color: #ddffdd; border: 1px solid #77aa77;")
+
+        start_proxy = QGraphicsProxyWidget(item)
+        start_proxy.setWidget(start_button)
+
+        # Кнопка "Стоп"
+        stop_button = QPushButton()
+        stop_button.setIcon(QIcon.fromTheme("media-playback-stop"))
+        stop_button.setToolTip("Stop Clock")
+        stop_button.setObjectName("stopButton")
+        stop_button.setStyleSheet("background-color: #ffdddd; border: 1px solid #aa7777;")
+
+        stop_proxy = QGraphicsProxyWidget(item)
+        stop_proxy.setWidget(stop_button)
+
+        # CSS для кнопок
+        style = """
+        QPushButton#startButton {
+            background-color: #ddffdd;
+            border: 1px solid #77aa77;
+            border-radius: 0px;
+        }
+        QPushButton#startButton:hover {
+            background-color: #bbffbb;
+            border-color: #559955;
+        }
+        QPushButton#startButton:pressed {
+            background-color: #99cc99;
+            border-color: #336633;
+        }
+
+        QPushButton#stopButton {
+            background-color: #ffdddd;
+            border: 1px solid #aa7777;
+            border-radius: 0px;
+        }
+        QPushButton#stopButton:hover {
+            background-color: #ffbbbb;
+            border-color: #aa5555;
+        }
+        QPushButton#stopButton:pressed {
+            background-color: #cc9999;
+            border-color: #883333;
+        }
+        """
+        start_button.setStyleSheet(style)
+        stop_button.setStyleSheet(style)
+
+        interval_proxy.setPos(57, 23)
+        start_proxy.setPos(29, 21)
+        stop_proxy.setPos(6, 21)
+
+        def on_start():
+            item.logic_element.start()
+
+        def on_stop():
+            item.logic_element.stop()
+
+        def on_interval_changed():
+            try:
+                val = int(interval_input.text())
+                item.logic_element.interval_ms = val
+                if item.logic_element._timer.isActive():
+                    item.logic_element.stop()
+                    item.logic_element.start()
+            except ValueError:
+                pass
+
+        start_button.clicked.connect(on_start)
+        stop_button.clicked.connect(on_stop)
+        interval_input.editingFinished.connect(on_interval_changed)
 
     def select_item(self, item: LogicElementItem):
         self.clear_selection()
@@ -196,6 +292,9 @@ class GameScene(QGraphicsScene):
                 self.delete_element(self.selected_element)
                 self.update()
 
+        super().keyPressEvent(event)
+        event.accept()
+
     def notify_modified(self):
         if self._parent_ui:
             self._parent_ui.notify_scene_modified(self)
@@ -225,8 +324,11 @@ class GameScene(QGraphicsScene):
                 inp: inp.value()
                 for inp in self.grid.get_input_elements()
             }
-            #self.grid.tick_once()
             self.grid.compute_outputs(input_values)
+
+    def update_scene(self):
+        self.tick()
+        self.update()
 
     def update_connections(self):
         for conn in self.connections:

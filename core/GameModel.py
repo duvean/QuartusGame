@@ -13,7 +13,7 @@ class GameModel:
         self.grid = Grid()
         self.current_level = level
         self.selected_element_type: Optional[type] = None
-        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, RSTriggerElement, DTriggerElement]
+        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, RSTriggerElement, DTriggerElement, ClockGeneratorElement]
         self.load_user_elements()
 
     def load_user_elements(self):

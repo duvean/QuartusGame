@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
 
+from PyQt6.QtCore import QTimer, QObject, pyqtSignal
+
 from core.BehaviorModifiers import BehaviorModifier
 
 
@@ -285,3 +287,28 @@ class DTriggerElement(LogicElement):
         self.state = getattr(self, "_next_state", self.state)
         self.next_output_values = [self.state, 1 - self.state]
         super().tick()
+
+class ClockGeneratorElement(LogicElement):
+    def __init__(self, interval_ms=500):
+        super().__init__(num_inputs=0, num_outputs=1, name="ClockGen")
+        self._timer = QTimer()
+        self._timer.timeout.connect(self._toggle_output)
+        self.interval_ms = interval_ms
+        self._state = 0
+
+        self.width = 8
+        self._hide_ports_names()
+
+    def get_timer(self) -> QTimer:
+        return self._timer
+
+    def start(self):
+        self._timer.start(self.interval_ms)
+
+    def stop(self):
+        self._timer.stop()
+
+    def _toggle_output(self):
+        self._state ^= 1
+        self.output_values[0] = self._state
+        self.next_output_values[0] = self._state
