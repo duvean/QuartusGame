@@ -60,6 +60,17 @@ class Grid:
         self.elements.append(element)
         return True
 
+    @staticmethod
+    def connect_elements(source: LogicElement, source_port: int,
+                         target: LogicElement, target_port: int) -> bool:
+        """Соединяет выход source с входом target"""
+        return source.connect_output(source_port, target, target_port)
+
+    @staticmethod
+    def disconnect_port(source: LogicElement, port_type: str, port: int) -> bool:
+        """Удаляет связи с выбранным портом"""
+        return source.disconnect_port(port_type, port)
+
     def remove_element(self, element: LogicElement) -> bool:
         if element.position is not None:
             element.position = None

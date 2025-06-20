@@ -41,7 +41,7 @@ class LevelFactory:
         input_names = ["A", "B"]
         output_names = ["F"]
         name = "Уровень 2: ИЛИ (OR)"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_3():
@@ -52,7 +52,7 @@ class LevelFactory:
         input_names = ["A"]
         output_names = ["F"]
         name = "Уровень 3: НЕ (NOT)"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_4():
@@ -78,7 +78,7 @@ class LevelFactory:
         input_names = ["A", "B"]
         output_names = ["S", "C"]
         name = "Уровень 5: Полусумматор"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_6():
@@ -95,7 +95,7 @@ class LevelFactory:
         input_names = ["A", "B", "Cin"]
         output_names = ["S", "Cout"]
         name = "Уровень 6: Полный сумматор"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_7():
@@ -112,7 +112,7 @@ class LevelFactory:
         input_names = ["A", "B", "SEL"]
         output_names = ["F"]
         name = "Уровень 7: 2-входовый мультиплексор"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_8():
@@ -129,7 +129,7 @@ class LevelFactory:
         input_names = ["A", "B", "C", "D", "SEL1", "SEL0"]
         output_names = ["F"]
         name = "Уровень 8: 4-входовый мультиплексор из подсхем"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_9():
@@ -154,7 +154,7 @@ class LevelFactory:
         input_names = ["D3", "D2", "D1", "D0"]
         output_names = ["F1", "F0"]
         name = "Уровень 9: Приоритетный шифратор (4 бита)"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_10():
@@ -167,7 +167,7 @@ class LevelFactory:
         input_names = ["S", "R"]
         output_names = ["Q"]
         name = "Уровень 10: Триггер SR"
-        return Level(truth_table, input_names, output_names, name)
+        return Level(truth_table, input_names, output_names, name, unlocked=True)
 
     @staticmethod
     def _make_level_freeplay():
