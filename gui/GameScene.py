@@ -277,8 +277,31 @@ class GameScene(QGraphicsScene):
     def mouseDoubleClickEvent(self, event):
         item = self.itemAt(event.scenePos(), QTransform())
         if isinstance(item, LogicElementItem):
+            # Получаем координаты в сцене
             scene_pos = item.scenePos() + QPointF(item.boundingRect().width() / 2, item.boundingRect().height() / 2)
-            # Пока пустой обработчик, только получаем координаты клика
+
+            # Создаем QLineEdit
+            view = self.views()[0]  # QGraphicsView
+            edit = QLineEdit(item.logic_element.name, view)
+            edit.move(view.mapFromScene(scene_pos))
+            edit.setFixedWidth(100)
+            edit.setFocus()
+            edit.selectAll()
+            edit.show()
+
+            def finish_editing():
+                new_name = edit.text().strip()
+                if new_name and new_name != item.logic_element.name:
+                    success = self.grid.rename_element(item.logic_element, new_name)
+                    if success:
+                        self.update()
+                    else:
+                        QMessageBox.warning(view, "Ошибка", "Имя должно быть уникальным.")
+                edit.deleteLater()
+
+            edit.editingFinished.connect(finish_editing)
+            return
+
         super().mouseDoubleClickEvent(event)
 
     def mouseReleaseEvent(self, event):
