@@ -5,13 +5,15 @@ from typing import Tuple, List, Optional
 
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, QHBoxLayout, QListWidget,
                              QLabel, QVBoxLayout, QFrame, QMessageBox, QMenu, QInputDialog, QTabWidget, QListWidgetItem,
-                             QHeaderView)
+                             QHeaderView, QGroupBox)
 from PyQt6.QtGui import QPainter, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
 from core.Level import Level
 from core.CustomElementFactory import CustomElementFactory
 from core.Grid import Grid
+from core.LogicElements import ClockGeneratorElement
+from gui import LogicElementItem
 from gui.GameScene import GameScene
 from gui.TruthTableView import TruthTableView
 
@@ -84,6 +86,10 @@ class GameUI(QMainWindow):
         # === ПРАВАЯ ЧАСТЬ - ПАНЕЛЬ УПРАВЛЕНИЯ ===
         side_panel = QVBoxLayout()
 
+        toolbox_group = QGroupBox("Панель элементов")
+        toolbox_layout = QVBoxLayout()
+        toolbox_group.setLayout(toolbox_layout)
+
         # Тулбокс (панель элементов)
         self.toolbox = QListWidget()
         self.toolbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -91,8 +97,10 @@ class GameUI(QMainWindow):
         for element_type in self.game_model.toolbox:
             self.toolbox.addItem(element_type.__name__)
         self.toolbox.itemClicked.connect(self.select_element)
-        side_panel.addWidget(QLabel("Элементы:"))
-        side_panel.addWidget(self.toolbox)
+        #side_panel.addWidget(QLabel("Элементы:"))
+        toolbox_layout.addWidget(self.toolbox)
+
+
 
         # Кнопки удаления и сохранения для элементов
         self.new_element_button = QPushButton("Новый элемент")
@@ -103,7 +111,29 @@ class GameUI(QMainWindow):
         button_row_layout.setSpacing(5)
         button_row_layout.addWidget(self.new_element_button)
         button_row_layout.addWidget(self.save_element_button)
-        side_panel.addLayout(button_row_layout)
+        toolbox_layout.addLayout(button_row_layout)
+
+        side_panel.addWidget(toolbox_group)
+
+        # Группа "Симуляция"
+        simulation_group = QGroupBox("Симуляция")
+        simulation_layout = QVBoxLayout()
+        simulation_group.setLayout(simulation_layout)
+
+        # Кнопка "Старт симуляции"
+        self.start_simulation_button = QPushButton("Старт")
+        self.start_simulation_button.setIcon(QIcon.fromTheme("media-playback-start"))
+        self.start_simulation_button.clicked.connect(self._handle_start_simulation)
+
+        # Кнопка "Стоп симуляции"
+        self.stop_simulation_button = QPushButton("Стоп")
+        self.stop_simulation_button.setIcon(QIcon.fromTheme("media-playback-stop"))
+        self.stop_simulation_button.clicked.connect(self._handle_stop_simulation)
+
+        simulation_layout.addWidget(self.start_simulation_button)
+        simulation_layout.addWidget(self.stop_simulation_button)
+
+        side_panel.addWidget(simulation_group)
 
         # Таблица истинности (если вкладка - уровень)
         level = self.game_model.current_level
@@ -351,6 +381,14 @@ class GameUI(QMainWindow):
                     QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
         else:
             QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
+
+    def _handle_start_simulation(self):
+        self.scene.start_simulation()
+        self.start_simulation_button.setEnabled(False)
+
+    def _handle_stop_simulation(self):
+        self.scene.stop_simulation()
+        self.start_simulation_button.setEnabled(True)
 
     def show_toolbox_context_menu(self, position: QPoint):
         item = self.toolbox.itemAt(position)

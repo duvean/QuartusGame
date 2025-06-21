@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Logic Circuit Game")
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 1200, 800)
         self.levels = LevelFactory.get_all_levels()
         self.stack = QStackedWidget()
         self.setCentralWidget(self.stack)

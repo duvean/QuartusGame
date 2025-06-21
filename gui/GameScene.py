@@ -22,7 +22,7 @@ CELL_SIZE = 15
 class GameScene(QGraphicsScene):
     def __init__(self, grid: Grid):
         super().__init__()
-        self.setSceneRect(0, 0, 700, 700)
+        self.setSceneRect(0, 0, 1200, 800)
         self.grid = grid
         self._parent_ui = None
         self.selected_port = None
@@ -181,6 +181,16 @@ class GameScene(QGraphicsScene):
         start_button.clicked.connect(on_start)
         stop_button.clicked.connect(on_stop)
         interval_input.editingFinished.connect(on_interval_changed)
+
+    def start_simulation(self):
+        for element in self.grid.elements:
+            if isinstance(element, ClockGeneratorElement):
+                element.start()
+
+    def stop_simulation(self):
+        for element in self.grid.elements:
+            if isinstance(element, ClockGeneratorElement):
+                element.stop()
 
     def select_item(self, item: LogicElementItem):
         self.clear_selection()

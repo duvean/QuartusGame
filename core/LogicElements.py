@@ -290,7 +290,7 @@ class DTriggerElement(LogicElement):
 
 class ClockGeneratorElement(LogicElement):
     def __init__(self, interval_ms=500):
-        super().__init__(num_inputs=0, num_outputs=1, name="ClockGen")
+        super().__init__(num_inputs=0, num_outputs=1, name="Clock")
         self._timer = QTimer()
         self._timer.timeout.connect(self._toggle_output)
         self.interval_ms = interval_ms
