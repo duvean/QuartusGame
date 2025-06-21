@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional, Set, Dict
 from PyQt6.QtCore import QTimer, QObject, pyqtSignal
 
 from core.BehaviorModifiers import BehaviorModifier
+from core.LogicElementRegistry import register_element
 
 
 class LogicElement(ABC):
@@ -157,6 +158,7 @@ class LogicElement(ABC):
         self.apply_modifiers()
 
 
+@register_element
 class InputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=0, num_outputs=1, name="Input")
@@ -178,6 +180,7 @@ class InputElement(LogicElement):
         pass
 
 
+@register_element
 class OutputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=1, num_outputs=0, name="Output")
@@ -190,6 +193,7 @@ class OutputElement(LogicElement):
         self.value = self.get_input_value(0)
 
 
+@register_element
 class AndElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="And")
@@ -201,6 +205,7 @@ class AndElement(LogicElement):
         self.output_values[0] = a & b
 
 
+@register_element
 class OrElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="Or")
@@ -212,6 +217,7 @@ class OrElement(LogicElement):
         ) else 0
 
 
+@register_element
 class XorElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="Xor")
@@ -223,6 +229,7 @@ class XorElement(LogicElement):
         ) else 1
 
 
+@register_element
 class NotElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=1, num_outputs=1, name="Not")
@@ -234,6 +241,7 @@ class NotElement(LogicElement):
         ) else 0
 
 
+@register_element
 class RSTriggerElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=3, num_outputs=2, name="RSFF")
@@ -266,6 +274,7 @@ class RSTriggerElement(LogicElement):
         super().tick()
 
 
+@register_element
 class DTriggerElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=2, name="DFF")  # D и CLK
@@ -288,6 +297,8 @@ class DTriggerElement(LogicElement):
         self.next_output_values = [self.state, 1 - self.state]
         super().tick()
 
+
+@register_element
 class ClockGeneratorElement(LogicElement):
     def __init__(self, interval_ms=500):
         super().__init__(num_inputs=0, num_outputs=1, name="Clock")

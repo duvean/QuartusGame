@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QFormLayout, QSpinBox
 
 from core.BehaviorModifiers import *
-from core.BehaviorModifiersRegister import *
+from core.BehaviorModifiersRegistry import *
 
 
 class ModifierEditor(QWidget):

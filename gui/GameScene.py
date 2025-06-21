@@ -11,7 +11,7 @@ from core.LogicElements import InputElement, ClockGeneratorElement
 from core.Grid import Grid
 from gui.LogicElementItem import LogicElementItem
 
-from core.BehaviorModifiersRegister import (
+from core.BehaviorModifiersRegistry import (
     get_available_modifier_names,
     create_modifier_by_name,
     create_modifier_editor,

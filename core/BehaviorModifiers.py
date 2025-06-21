@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from core.BehaviorModifiersRegister import register_modifier
+from core.BehaviorModifiersRegistry import register_modifier
 
 
 class BehaviorModifier(ABC):

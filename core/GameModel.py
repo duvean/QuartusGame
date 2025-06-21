@@ -5,18 +5,20 @@ from core.LogicElements import *
 from core.Level import Level
 from core.Grid import Grid
 from core.CustomElementFactory import CustomElementFactory
+from core.LogicElementRegistry import ELEMENTS_REGISTRY
 
 USER_ELEMENTS_DIR = "user_elements"
 
 class GameModel:
     def __init__(self, level: Level):
         self.grid = Grid()
+        self.load_user_elements()
         self.current_level = level
         self.selected_element_type: Optional[type] = None
-        self.toolbox: List[type] = [InputElement, OutputElement, AndElement, OrElement, XorElement, NotElement, RSTriggerElement, DTriggerElement, ClockGeneratorElement]
-        self.load_user_elements()
+        self.toolbox: List[type] = list(ELEMENTS_REGISTRY.values())
 
-    def load_user_elements(self):
+    @staticmethod
+    def load_user_elements():
         if not os.path.exists(USER_ELEMENTS_DIR):
             return
 
@@ -29,7 +31,7 @@ class GameModel:
                 name = os.path.splitext(filename)[0]
                 try:
                     CustomClass = CustomElementFactory.make_custom_element_class(name, grid_data)
-                    self.toolbox.append(CustomClass)
+                    register_element(name, CustomClass)
                 except Exception as e:
                     print(f"Не удалось загрузить {filename}: {e}")
 

@@ -2,7 +2,7 @@ import itertools
 from collections import deque, defaultdict
 
 from core.BehaviorModifiers import *
-from core.BehaviorModifiersRegister import *
+from core.BehaviorModifiersRegistry import *
 from core.LogicElements import *
 from core.Level import Level
 
@@ -282,7 +282,7 @@ class Grid:
                             "data": modifier.to_dict()
                         }
                         for modifier in e.modifiers
-                        for name, entry in MODIFIERS_REGISTER.items()
+                        for name, entry in MODIFIERS_REGISTRY.items()
                         if isinstance(modifier, entry["class"])
                     ]
                 }
