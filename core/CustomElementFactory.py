@@ -1,11 +1,11 @@
 from math import ceil
 
 from core.LogicElements import LogicElement, OutputElement, InputElement
-from core.Grid import Grid
 
 class CustomElementFactory:
     @staticmethod
     def make_custom_element_class(class_name: str, grid_data: dict):
+        from core.Grid import Grid
         class CustomElement(LogicElement):
             def __init__(self):
                 subgrid = Grid()

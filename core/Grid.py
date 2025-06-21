@@ -1,10 +1,12 @@
 import itertools
 from collections import deque, defaultdict
 
-from core.BehaviorModifiers import *
-from core.BehaviorModifiersRegistry import *
 from core.LogicElements import *
+from core.LogicElementRegistry import create_element_by_name
 from core.Level import Level
+from core.CustomElementFactory import CustomElementFactory
+from core.BehaviorModifiers import *
+
 
 class Grid:
     def __init__(self):
@@ -255,39 +257,7 @@ class Grid:
 
     def to_dict(self):
         return {
-            "elements": [
-                {
-                    "type": e.__class__.__name__,
-                    "name": e.name,
-                    "position": e.position,
-                    "input_names": e.input_names,
-                    "output_names": e.output_names,
-                    "subgrid": (
-                        e._subgrid.to_dict()
-                        if hasattr(e, "_subgrid") else None
-                    ),
-                    "port_names": {
-                        "inputs": sorted(
-                            [(el.name, el.position[1]) for el in e._subgrid.elements if isinstance(el, InputElement)],
-                            key=lambda x: x[1]
-                        ),
-                        "outputs": sorted(
-                            [(el.name, el.position[1]) for el in e._subgrid.elements if isinstance(el, OutputElement)],
-                            key=lambda x: x[1]
-                        )
-                    } if hasattr(e, "_subgrid") else None,
-                    "modifiers": [
-                        {
-                            "name": name,
-                            "data": modifier.to_dict()
-                        }
-                        for modifier in e.modifiers
-                        for name, entry in MODIFIERS_REGISTRY.items()
-                        if isinstance(modifier, entry["class"])
-                    ]
-                }
-                for e in self.elements
-            ],
+            "elements": [e.to_dict() for e in self.elements],
             "connections": [
                 {
                     "source": (self.elements.index(src), src_idx),
@@ -301,59 +271,23 @@ class Grid:
 
     def load_from_dict(self, data):
         self.elements.clear()
-        type_map = {
-            "InputElement": InputElement,
-            "OutputElement": OutputElement,
-            "AndElement": AndElement,
-            "OrElement": OrElement,
-            "NotElement": NotElement,
-            "XorElement": XorElement,
-            "DTriggerElement": DTriggerElement
-        }
-
         custom_classes = {}
 
         for elem_data in data["elements"]:
-            elem_type = elem_data["type"]
+            elem_type = elem_data.get("type")
             subgrid_data = elem_data.get("subgrid")
 
             if subgrid_data:
                 if elem_type not in custom_classes:
-                    from core.CustomElementFactory import CustomElementFactory
                     CustomClass = CustomElementFactory.make_custom_element_class(elem_type, subgrid_data)
-                    type_map[elem_type] = CustomClass
                     custom_classes[elem_type] = CustomClass
                 cls = custom_classes[elem_type]
+                element = cls()
             else:
-                cls = type_map.get(elem_type)
-
-            if not cls:
-                continue
-
-            element = cls()
-            element.name = elem_data["name"]
-            element.position = tuple(elem_data["position"])
-            element.input_names = elem_data.get("input_names", [])
-            element.output_names = elem_data.get("output_names", [])
-
-            port_names = elem_data.get("port_names")
-            if port_names:
-                element.input_names = [name for name, _ in port_names["inputs"]]
-                element.output_names = [name for name, _ in port_names["outputs"]]
-
-            # Загрузка модификаторов
-            for mod_data in elem_data.get("modifiers", []):
-                mod_name = mod_data.get("name")
-                mod_payload = mod_data.get("data", {})
-                modifier = create_modifier_by_name(mod_name)
-                if modifier and hasattr(modifier, "from_dict"):
-                    modifier = modifier.from_dict(mod_payload) or modifier
-                elif modifier:
-                    # На случай если from_dict вернёт None, но данные есть
-                    for k, v in mod_payload.items():
-                        setattr(modifier, k, v)
-                if modifier:
-                    element.add_modifier(modifier)
+                cls = create_element_by_name(elem_type)
+                if cls is None:
+                    continue
+                element = cls.from_dict(elem_data)
 
             self.elements.append(element)
 

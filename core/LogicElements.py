@@ -1,3 +1,4 @@
+import inspect
 from abc import ABC, abstractmethod
 from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
@@ -6,7 +7,7 @@ from PyQt6.QtCore import QTimer, QObject, pyqtSignal
 
 from core.BehaviorModifiers import BehaviorModifier
 from core.LogicElementRegistry import register_element
-
+from core.BehaviorModifiersRegistry import MODIFIERS_REGISTRY, create_modifier_by_name
 
 class LogicElement(ABC):
     def __init__(
@@ -156,6 +157,76 @@ class LogicElement(ABC):
     def tick(self):
         self.output_values = self.next_output_values[:]
         self.apply_modifiers()
+
+    def to_dict(self):
+        base = {
+            "type": self.__class__.__name__,
+            "name": self.name,
+            "position": self.position,
+            "input_names": self.input_names,
+            "output_names": self.output_names,
+            "modifiers": [
+                {
+                    "name": name,
+                    "data": modifier.to_dict()
+                }
+                for modifier in self.modifiers
+                for name, entry in MODIFIERS_REGISTRY.items()
+                if isinstance(modifier, entry["class"])
+            ]
+        }
+
+        # Получаем сигнатуру конструктора и добавляем нужные аргументы
+        sig = inspect.signature(self.__init__)
+        for param in sig.parameters.values():
+            if param.name == "self":
+                continue
+            val = getattr(self, param.name, None)
+            if val is not None:
+                base[param.name] = val
+
+        return base
+
+    @classmethod
+    def from_dict(cls, data):
+        # Получаем сигнатуру конструктора
+        sig = inspect.signature(cls.__init__)
+        kwargs = {}
+
+        # Извлекаем только параметры, которые явно указаны в сигнатуре
+        for name, param in sig.parameters.items():
+            if name == "self":
+                continue
+            if name in data:
+                kwargs[name] = data[name]
+            elif param.default is not inspect.Parameter.empty:
+                kwargs[name] = param.default
+            else:
+                raise ValueError(f"Отсутствуют аргументы конструктора: {name}")
+
+        # Создание объекта с аргументами конструктора
+        obj = cls(**kwargs)
+
+        # Дополнительные параметры, не передаваемые в конструктор
+        obj.name = data.get("name", obj.name)
+        obj.position = tuple(data.get("position", (0, 0)))
+        obj.input_names = data.get("input_names", obj.input_names)
+        obj.output_names = data.get("output_names", obj.output_names)
+
+        # Модификаторы
+        for mod in data.get("modifiers", []):
+            mod_name = mod.get("name")
+            mod_data = mod.get("data", {})
+            modifier = create_modifier_by_name(mod_name)
+            if modifier and hasattr(modifier, "from_dict"):
+                modifier = modifier.from_dict(mod_data) or modifier
+            elif modifier:
+                for k, v in mod_data.items():
+                    setattr(modifier, k, v)
+            if modifier:
+                obj.add_modifier(modifier)
+
+        return obj
 
 
 @register_element
