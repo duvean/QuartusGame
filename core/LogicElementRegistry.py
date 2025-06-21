@@ -1,9 +1,10 @@
 ELEMENTS_REGISTRY: dict[str, type] = {}
 
-def register_element(cls_or_name: type | str, cls: type = None):
+def register_element(cls_or_name: type | str, cls: type = None, is_custom=False):
     if isinstance(cls_or_name, str):
         # Регистрируем по имени (используется для кастомных)
         if cls:
+            cls._is_custom = is_custom
             ELEMENTS_REGISTRY[cls_or_name] = cls
         return cls
     else:

@@ -200,10 +200,18 @@ class GameScene(QGraphicsScene):
     def place_element(self, type, pos):
         x = math.floor(pos.x() / CELL_SIZE) * CELL_SIZE
         y = math.floor(pos.y() / CELL_SIZE) * CELL_SIZE
+
         element = self.grid.create_element(type)
-        if self.grid.add_element(element, x // CELL_SIZE, y // CELL_SIZE):
-            item = LogicElementItem(element, x, y)
-            self.addItem(item)
+        if not element:
+            return
+
+        success = self.grid.add_element(element, x // CELL_SIZE, y // CELL_SIZE)
+        if not success:
+            return
+
+        item = LogicElementItem(element, x, y)
+        self.addItem(item)
+
 
     @staticmethod
     def connect_elements(source, source_idx, target, target_idx) -> bool:

@@ -9,15 +9,15 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, Q
 from PyQt6.QtGui import QPainter, QIcon
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 
+from core import USER_ELEMENTS_DIR
+from core.Grid import Grid
 from core.Level import Level
 from core.CustomElementFactory import CustomElementFactory
-from core.Grid import Grid
-from core.LogicElements import ClockGeneratorElement
-from gui import LogicElementItem
+
 from gui.GameScene import GameScene
 from gui.TruthTableView import TruthTableView
+from gui.ToolboxExplorer import ToolboxExplorer
 
-USER_ELEMENTS_DIR = "user_elements"
 
 class GameUI(QMainWindow):
     back_to_menu_requested = pyqtSignal()
@@ -86,21 +86,9 @@ class GameUI(QMainWindow):
         # === ПРАВАЯ ЧАСТЬ - ПАНЕЛЬ УПРАВЛЕНИЯ ===
         side_panel = QVBoxLayout()
 
-        toolbox_group = QGroupBox("Панель элементов")
-        toolbox_layout = QVBoxLayout()
-        toolbox_group.setLayout(toolbox_layout)
-
         # Тулбокс (панель элементов)
-        self.toolbox = QListWidget()
-        self.toolbox.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.toolbox.customContextMenuRequested.connect(self.show_toolbox_context_menu)
-        for element_type in self.game_model.toolbox:
-            self.toolbox.addItem(element_type.__name__)
-        self.toolbox.itemClicked.connect(self.select_element)
-        #side_panel.addWidget(QLabel("Элементы:"))
-        toolbox_layout.addWidget(self.toolbox)
-
-
+        self.toolbox = ToolboxExplorer(game_ui=self)
+        side_panel.addWidget(self.toolbox)
 
         # Кнопки удаления и сохранения для элементов
         self.new_element_button = QPushButton("Новый элемент")
@@ -111,9 +99,7 @@ class GameUI(QMainWindow):
         button_row_layout.setSpacing(5)
         button_row_layout.addWidget(self.new_element_button)
         button_row_layout.addWidget(self.save_element_button)
-        toolbox_layout.addLayout(button_row_layout)
-
-        side_panel.addWidget(toolbox_group)
+        side_panel.addLayout(button_row_layout)
 
         # Группа "Симуляция"
         simulation_group = QGroupBox("Симуляция")
@@ -311,13 +297,6 @@ class GameUI(QMainWindow):
         # Включаем/выключаем остальные кнопки
         self.back_button.setEnabled(is_expanded)
 
-    def select_element(self, item: QListWidgetItem):
-        element_name = item.text()
-        for element_type in self.game_model.toolbox:
-            if element_type.__name__ == element_name:
-                self.selected_element_type = element_type
-                break
-
     def _handle_tab_close_requested(self, index: int):
         metadata = self.tab_metadata.get(index)
         if not metadata:
@@ -343,45 +322,6 @@ class GameUI(QMainWindow):
         if self.tab_widget.count() == 0:
             self.back_to_menu_requested.emit()
 
-    def _handle_delete_action(self, item: QListWidgetItem):
-        element_name = item.text()
-        file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
-
-        if not os.path.isfile(file_path):
-            QMessageBox.information(
-                self,
-                "Удаление запрещено",
-                f"Элемент '{element_name}' является встроенным и не может быть удалён."
-            )
-            return
-
-        confirm = QMessageBox.question(
-            self,
-            "Подтверждение удаления",
-            f"Удалить кастомный элемент '{element_name}'?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if confirm == QMessageBox.StandardButton.Yes:
-            self.delete_custom_element(element_name)
-
-    def _handle_edit_action(self, item: QListWidgetItem):
-        element_name = item.text()
-        file_path = os.path.join(USER_ELEMENTS_DIR, f"{element_name}.json")
-
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                try:
-                    data = json.load(f)
-                    # Пытаемся загрузить весь JSON напрямую как Grid
-                    grid = Grid()
-                    grid.load_from_dict(data)
-                    self.add_new_scene_tab(f"Редакт: {element_name}", grid,
-                                           element_name=element_name)
-                except Exception as e:
-                    QMessageBox.warning(self, "Ошибка загрузки", f"Не удалось загрузить элемент: {e}")
-        else:
-            QMessageBox.information(self, "Нельзя редактировать", "Этот элемент нельзя редактировать.")
-
     def _handle_start_simulation(self):
         self.scene.start_simulation()
         self.start_simulation_button.setEnabled(False)
@@ -389,26 +329,6 @@ class GameUI(QMainWindow):
     def _handle_stop_simulation(self):
         self.scene.stop_simulation()
         self.start_simulation_button.setEnabled(True)
-
-    def show_toolbox_context_menu(self, position: QPoint):
-        item = self.toolbox.itemAt(position)
-        if item is None:
-            return
-
-        menu = QMenu()
-        edit_action = menu.addAction("Редактировать")
-        delete_action = menu.addAction("Удалить")
-
-        action = menu.exec(self.toolbox.viewport().mapToGlobal(position))
-        if action == delete_action:
-            self._handle_delete_action(item)
-        elif action == edit_action:
-            self._handle_edit_action(item)
-
-    def refresh_toolbox(self):
-        self.toolbox.clear()
-        for element_type in self.game_model.toolbox:
-            self.toolbox.addItem(element_type.__name__)
 
     def create_new_custom_element(self):
         name, ok = QInputDialog.getText(self, "Новый элемент", "Введите название элемента:")
@@ -444,6 +364,7 @@ class GameUI(QMainWindow):
         if index == -1:
             QMessageBox.warning(self, "Нет сцены", "Нет открытой сцены для сохранения.")
             return
+
         metadata = self.tab_metadata.get(index)
         if not metadata or not metadata.get("element_name"):
             QMessageBox.warning(self, "Нельзя сохранить", "Эта вкладка не является пользовательским элементом.")
@@ -453,30 +374,26 @@ class GameUI(QMainWindow):
         grid = metadata["grid"]
         grid_dict = grid.to_dict()
 
-        os.makedirs(USER_ELEMENTS_DIR, exist_ok=True)
-        filepath = os.path.join(USER_ELEMENTS_DIR, f"{name}.json")
+        filepath = metadata.get("save_path") or os.path.join(USER_ELEMENTS_DIR, f"{name}.json")
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
         try:
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(grid_dict, f, indent=2)
 
-            # Перегружаем только что сохранённый элемент
             new_class = CustomElementFactory.make_custom_element_class(name, grid_dict)
+            new_class._is_custom = True
+            new_class().update_port_names_from_subgrid()
 
-            # Обновляем имена портов согласно subgrid
-            temp_instance = new_class()
-            temp_instance.update_port_names_from_subgrid()
-
-            # Если элемента ещё нет в тулбоксе - добавляем
             if not any(cls.__name__ == new_class.__name__ for cls in self.game_model.toolbox):
                 self.game_model.toolbox.append(new_class)
-                self.toolbox.addItem(new_class.__name__)
 
-            # Убираем звёздочку - признак несохранённых изменений
             tab_name = self.tab_widget.tabText(index)
             if tab_name.startswith("*"):
                 self.tab_widget.setTabText(index, tab_name[1:])
             self.tab_metadata[index]["modified"] = False
+
+            self.toolbox.reload()
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить элемент: {e}")
@@ -501,20 +418,19 @@ class GameUI(QMainWindow):
             except Exception as e:
                 QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл:\n{e}")
 
-    def add_new_scene_tab(self, name: str, grid: Grid, element_name: Optional[str] = None):
+    def add_new_scene_tab(self, title: str, grid: Grid, element_name: Optional[str] = None,
+                          save_path: Optional[str] = None):
         scene = GameScene(grid)
         scene.set_parent_ui(self)
-
         view = QGraphicsView(scene)
         view.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        index = self.tab_widget.addTab(view, name)
+        index = self.tab_widget.addTab(view, title)
         self.tab_widget.setCurrentIndex(index)
-
         self.tab_metadata[index] = {
             "scene": scene,
             "grid": grid,
             "element_name": element_name,
+            "save_path": save_path,
             "modified": False
         }
 

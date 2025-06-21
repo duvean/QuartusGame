@@ -14,7 +14,6 @@ class GameModel:
         self.grid = Grid()
         self.load_user_elements()
         self.current_level = level
-        self.selected_element_type: Optional[type] = None
         self.toolbox: List[type] = list(ELEMENTS_REGISTRY.values())
 
     @staticmethod
@@ -22,18 +21,19 @@ class GameModel:
         if not os.path.exists(USER_ELEMENTS_DIR):
             return
 
-        for filename in os.listdir(USER_ELEMENTS_DIR):
-            if filename.endswith(".json"):
-                path = os.path.join(USER_ELEMENTS_DIR, filename)
-                with open(path, "r", encoding="utf-8") as f:
-                    grid_data = json.load(f)
+        for root, dirs, files in os.walk(USER_ELEMENTS_DIR):
+            for filename in files:
+                if filename.endswith(".json"):
+                    path = os.path.join(root, filename)
+                    with open(path, "r", encoding="utf-8") as f:
+                        grid_data = json.load(f)
 
-                name = os.path.splitext(filename)[0]
-                try:
-                    CustomClass = CustomElementFactory.make_custom_element_class(name, grid_data)
-                    register_element(name, CustomClass)
-                except Exception as e:
-                    print(f"Не удалось загрузить {filename}: {e}")
+                    name = os.path.splitext(filename)[0]
+                    try:
+                        CustomClass = CustomElementFactory.make_custom_element_class(name, grid_data)
+                        register_element(name, CustomClass, is_custom=True)
+                    except Exception as e:
+                        print(f"Не удалось загрузить {filename}: {e}")
 
     @staticmethod
     def connect_elements(source: LogicElement, source_port: int,

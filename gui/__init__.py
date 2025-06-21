@@ -4,3 +4,4 @@ from gui.GameUI import GameUI
 from gui.MainWindow import MainWindow, MainMenuWidget
 from gui.ElementRenderStrategy import get_render_strategy_for
 from gui.BehaviorModifiersView import ModifierViewFactory
+from gui.ToolboxExplorer import ToolboxExplorer
