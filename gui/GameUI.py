@@ -15,6 +15,7 @@ from core.Level import Level
 from core.CustomElementFactory import CustomElementFactory
 
 from gui.GameScene import GameScene
+from gui.GameView import GameView
 from gui.TruthTableView import TruthTableView
 from gui.ToolboxExplorer import ToolboxExplorer
 
@@ -428,7 +429,7 @@ class GameUI(QMainWindow):
                           save_path: Optional[str] = None):
         scene = GameScene(grid)
         scene.set_parent_ui(self)
-        view = QGraphicsView(scene)
+        view = GameView(scene)
         view.setRenderHint(QPainter.RenderHint.Antialiasing)
         index = self.tab_widget.addTab(view, title)
         self.tab_widget.setCurrentIndex(index)
