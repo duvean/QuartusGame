@@ -3,9 +3,8 @@ import json
 import shutil
 from collections import defaultdict
 
-from PyQt6.QtWidgets import QTreeView, QMenu, QInputDialog, QMessageBox, QTreeWidgetItem, QTreeWidget
-from PyQt6.QtGui import QStandardItemModel, QStandardItem, QAction
-from PyQt6.QtCore import Qt, QModelIndex, QPoint
+from PyQt6.QtWidgets import QMenu, QInputDialog, QMessageBox, QTreeWidgetItem, QTreeWidget, QAbstractItemView
+from PyQt6.QtCore import Qt, QPoint
 
 from core import USER_ELEMENTS_DIR
 from core.Grid import Grid
@@ -61,19 +60,28 @@ class ToolboxExplorer(QTreeWidget):
         _restore_expanded_paths(expanded_paths)
 
     def _load_builtin_elements(self):
-        primitives_item = QTreeWidgetItem(self, ["Примитивы"])
-        groups = defaultdict(list)
+        primitives_root = QTreeWidgetItem(self, ["Примитивы"])
+        primitives_root.setExpanded(True)
+
         for cls in self.game_ui.game_model.toolbox:
             if getattr(cls, "_is_custom", False):
                 continue
-            group = getattr(cls, "category", "Вентили")
-            groups[group].append(cls)
 
-        for group, classes in groups.items():
-            group_item = QTreeWidgetItem(primitives_item, [group])
-            for cls in classes:
-                item = QTreeWidgetItem(group_item, [cls.__name__])
-                item.setData(0, Qt.ItemDataRole.UserRole, cls)
+            category_path = getattr(cls, "category", "Прочее").split("/")
+            parent_item = primitives_root
+
+            for part in category_path:
+                child_item = None
+                for i in range(parent_item.childCount()):
+                    if parent_item.child(i).text(0) == part:
+                        child_item = parent_item.child(i)
+                        break
+                if not child_item:
+                    child_item = QTreeWidgetItem(parent_item, [part])
+                parent_item = child_item
+
+            item = QTreeWidgetItem(parent_item, [cls.__name__])
+            item.setData(0, Qt.ItemDataRole.UserRole, cls)
 
     def _load_user_elements(self):
         if not os.path.exists(USER_ELEMENTS_DIR):
@@ -81,6 +89,7 @@ class ToolboxExplorer(QTreeWidget):
 
         user_root = QTreeWidgetItem(self, ["Пользовательские"])
         user_root.setData(0, Qt.ItemDataRole.UserRole, {"type": "folder", "path": USER_ELEMENTS_DIR})
+        user_root.setExpanded(True)
         self._load_user_elements_recursive(USER_ELEMENTS_DIR, user_root)
 
     def _load_user_elements_recursive(self, path: str, parent_item: QTreeWidgetItem):

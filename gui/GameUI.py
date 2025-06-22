@@ -3,11 +3,11 @@ import os
 
 from typing import Tuple, List, Optional
 
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, QHBoxLayout, QListWidget,
-                             QLabel, QVBoxLayout, QFrame, QMessageBox, QMenu, QInputDialog, QTabWidget, QListWidgetItem,
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, QHBoxLayout,
+                             QLabel, QVBoxLayout, QFrame, QMessageBox, QInputDialog, QTabWidget,
                              QHeaderView, QGroupBox)
 from PyQt6.QtGui import QPainter, QIcon
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint
+from PyQt6.QtCore import Qt, pyqtSignal
 
 from core import USER_ELEMENTS_DIR
 from core.Grid import Grid
@@ -88,6 +88,7 @@ class GameUI(QMainWindow):
 
         # Тулбокс (панель элементов)
         self.toolbox = ToolboxExplorer(game_ui=self)
+        side_panel.addWidget(QLabel("Элементы"))
         side_panel.addWidget(self.toolbox)
 
         # Кнопки удаления и сохранения для элементов
@@ -195,22 +196,27 @@ class GameUI(QMainWindow):
                     background: #f2f2f2;
                     font-weight: 500;
                 }
-                QListWidget {
+                QTreeWidget {
                     background-color: white;
                     border: 1px solid #ccc;
                     border-radius: 6px;
+                    outline: none; /* чтобы не было стандартного синего контура при фокусе */
                 }
-                QListWidget::item {
+                
+                QTreeWidget::item {
                     padding: 6px;
                 }
-                QListWidget::item:selected {
+                
+                QTreeWidget::item:selected {
                     background-color: #d0e8ff;
                     color: black;
                 }
-                QListWidget::item:selected:hover {
+                
+                QTreeWidget::item:selected:hover {
                     background-color: #bdbdff;
                 }
-                QListWidget::item:hover {
+                
+                QTreeWidget::item:hover {
                     background-color: #f5f5f5;
                 }
                 QTableWidget {

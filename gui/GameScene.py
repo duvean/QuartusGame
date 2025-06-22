@@ -1,9 +1,11 @@
 import math
 
-from PyQt6.QtWidgets import (QPushButton, QGraphicsScene, QGraphicsItem,
-                             QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
-                             QMenu, QDialog, QFormLayout, QComboBox, QVBoxLayout, QTabWidget, QWidget,
-                             QHBoxLayout, QListWidgetItem, QListWidget)
+from PyQt6.QtWidgets import (
+    QPushButton, QGraphicsScene, QGraphicsItem,
+    QCheckBox, QGraphicsProxyWidget, QGraphicsPathItem, QLineEdit, QMessageBox,
+    QMenu, QDialog, QFormLayout, QComboBox, QVBoxLayout, QTabWidget, QWidget,
+    QHBoxLayout, QListWidgetItem, QListWidget
+)
 from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath, QIcon, QIntValidator
 from PyQt6.QtCore import Qt, QPointF
 

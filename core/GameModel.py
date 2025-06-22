@@ -31,7 +31,7 @@ class GameModel:
                     name = os.path.splitext(filename)[0]
                     try:
                         CustomClass = CustomElementFactory.make_custom_element_class(name, grid_data)
-                        register_element(name, CustomClass, is_custom=True)
+                        register_element(name, cls=CustomClass, is_custom=True)
                     except Exception as e:
                         print(f"Не удалось загрузить {filename}: {e}")
 

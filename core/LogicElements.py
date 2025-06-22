@@ -3,21 +3,27 @@ from abc import ABC, abstractmethod
 from math import ceil
 from typing import List, Tuple, Optional, Set, Dict
 
-from PyQt6.QtCore import QTimer, QObject, pyqtSignal
+from PyQt6.QtCore import QTimer
 
 from core.BehaviorModifiers import BehaviorModifier
 from core.LogicElementRegistry import register_element
 from core.BehaviorModifiersRegistry import MODIFIERS_REGISTRY, create_modifier_by_name
 
-class LogicElement(ABC):
+class Categorized:
+    def __init__(self, category: str = "Прочее"):
+        self.category = category
+
+class LogicElement(Categorized, ABC):
     def __init__(
             self,
             num_inputs: int,
             num_outputs: int,
             width: int = 6,
             height: int = 4,
-            name: str = "Element"
+            name: str = "Element",
+            category: str = "Прочее"
     ):
+        super().__init__(category)
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.width = width
@@ -229,7 +235,7 @@ class LogicElement(ABC):
         return obj
 
 
-@register_element
+@register_element(category="Вход-Выход")
 class InputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=0, num_outputs=1, name="Input")
@@ -251,7 +257,7 @@ class InputElement(LogicElement):
         pass
 
 
-@register_element
+@register_element(category="Вход-Выход")
 class OutputElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=1, num_outputs=0, name="Output")
@@ -369,7 +375,7 @@ class DTriggerElement(LogicElement):
         super().tick()
 
 
-@register_element
+@register_element(category="Вход-Выход")
 class ClockGeneratorElement(LogicElement):
     def __init__(self, interval_ms=500):
         super().__init__(num_inputs=0, num_outputs=1, name="Clock")
