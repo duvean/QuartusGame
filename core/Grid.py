@@ -116,7 +116,7 @@ class Grid:
         if new_name in self.existing_names:
             return False
         self.existing_names.discard(element.name)
-        self.release_name(element.name)
+        #self.release_name(element.name)
         element.name = new_name
         self.existing_names.add(new_name)
         return True
@@ -296,6 +296,7 @@ class Grid:
         custom_classes = {}
 
         for elem_data in data["elements"]:
+            elem_name = elem_data.get("name")
             elem_type = elem_data.get("type")
             subgrid_data = elem_data.get("subgrid")
 
@@ -312,6 +313,7 @@ class Grid:
                 element = cls.from_dict(elem_data)
 
             self.elements.append(element)
+            self.existing_names.add(elem_name)
 
         # Подключения
         for conn in data["connections"]:
