@@ -213,6 +213,14 @@ class GameScene(QGraphicsScene):
             item.is_selected = False
             self.selected_element = None
 
+    def select_all(self):
+        self.clear_selection()
+        for item in self.items():
+            if isinstance(item, LogicElementItem):
+                item.is_selected = True
+                self.selected_elements.add(item)
+        self.update()
+
     def clear_selection(self):
         for item in self.selected_elements:
             item.is_selected = False

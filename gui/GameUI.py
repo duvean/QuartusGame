@@ -299,8 +299,11 @@ class GameUI(QMainWindow):
         shortcut_paste = QShortcut(QKeySequence("Ctrl+V"), self)
         shortcut_paste.activated.connect(self._paste_active_scene)
 
-        shortcut_paste = QShortcut(QKeySequence("Backspace"), self)
-        shortcut_paste.activated.connect(self._delete_active_scene)
+        shortcut_delete = QShortcut(QKeySequence("Backspace"), self)
+        shortcut_delete.activated.connect(self._delete_active_scene)
+
+        shortcut_select_all = QShortcut(QKeySequence("Ctrl+A"), self)
+        shortcut_select_all.activated.connect(self._select_all_active_scene)
 
     def _get_active_scene(self) -> Optional[GameScene]:
         index = self.tab_widget.currentIndex()
@@ -325,6 +328,11 @@ class GameUI(QMainWindow):
         scene = self._get_active_scene()
         if scene:
             scene.delete_selected()
+
+    def _select_all_active_scene(self):
+        scene = self._get_active_scene()
+        if scene:
+            scene.select_all()
 
     def toggle_side_menu(self):
         self.is_menu_expanded = not self.is_menu_expanded
