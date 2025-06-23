@@ -88,8 +88,8 @@ class DefaultElementPainter(AbstractElementPainter):
         inner_rect = rect.adjusted(margin, margin + 15, -margin, -margin)
 
         # Внутренний прямоугольник
-        painter.setBrush(QBrush(QColor(200, 200, 255)))
-        painter.setPen(QPen(Qt.GlobalColor.black, 1))
+        painter.setBrush(QBrush(QColor(180, 220, 255) if is_selected else QColor(200, 200, 255)))
+        painter.setPen(QPen(Qt.GlobalColor.black, 2 if is_selected else 1))
         painter.drawRect(inner_rect)
 
         # Название элемента сверху, между прямоугольниками
