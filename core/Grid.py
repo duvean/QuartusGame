@@ -1,4 +1,5 @@
 import itertools
+import re
 from collections import deque, defaultdict
 
 from core.LogicElements import *
@@ -34,13 +35,33 @@ class Grid:
     def get_occupied_cells(self) -> Set[Tuple[int, int]]:
         return set().union(*[elem.occupied_cells for elem in self.elements])
 
-    def generate_unique_name(self, base):
+    def generate_unique_name(self, base: str) -> str:
+        # Если base сам по себе свободен
+        if base not in self.existing_names:
+            self.existing_names.add(base)
+            self.name_counter[base] = max(self.name_counter[base], 0)
+            return base
+
+        # Ищем свободное "base N"
+        i = 1
         while True:
-            self.name_counter[base] += 1
-            candidate = f"{base} {self.name_counter[base]}"
+            candidate = f"{base} {i}"
             if candidate not in self.existing_names:
                 self.existing_names.add(candidate)
+                self.name_counter[base] = max(self.name_counter[base], i)
                 return candidate
+            i += 1
+
+    def release_name(self, name: str):
+        """ Освобождает имя, например при удалении элемента """
+        self.existing_names.discard(name)
+
+        # Опционально: уменьшаем name_counter если удаляем последний с таким индексом
+        match = re.match(r"^(.*) (\d+)$", name)
+        if match:
+            base, num = match.group(1), int(match.group(2))
+            if self.name_counter[base] == num:
+                self.name_counter[base] -= 1
 
     def create_element(self, element_type: type) -> LogicElement:
         new_element = element_type()
@@ -76,7 +97,7 @@ class Grid:
     def remove_element(self, element: LogicElement) -> bool:
         if element.position is not None:
             element.position = None
-            self.existing_names.discard(element.name)
+            self.release_name(element.name)
             self.elements.remove(element)
             return True
         return False
@@ -95,6 +116,7 @@ class Grid:
         if new_name in self.existing_names:
             return False
         self.existing_names.discard(element.name)
+        self.release_name(element.name)
         element.name = new_name
         self.existing_names.add(new_name)
         return True
