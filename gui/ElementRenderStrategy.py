@@ -3,8 +3,9 @@ from abc import ABC, abstractmethod
 from PyQt6.QtGui import QPainter, QBrush, QColor, QPen, QPainterPath
 from PyQt6.QtCore import QRectF, Qt, QPointF
 from core.LogicElements import AndElement, NotElement, InputElement, OutputElement, OrElement, XorElement
+from core import CELL_SIZE
 
-CELL_SIZE = 25
+PORTS_OFFSET = 25
 
 class AbstractElementPainter(ABC):
     @abstractmethod
@@ -115,8 +116,8 @@ class DefaultElementPainter(AbstractElementPainter):
             if num_ports == 1:
                 return [inner_rect.top() + total_height / 2]
 
-            max_total_spacing = total_height - CELL_SIZE
-            spacing = min(CELL_SIZE, max_total_spacing / (num_ports - 1))
+            max_total_spacing = total_height - PORTS_OFFSET
+            spacing = min(PORTS_OFFSET, max_total_spacing / (num_ports - 1))
             group_height = spacing * (num_ports - 1)
             start_y = inner_rect.top() + (total_height - group_height) / 2
 
@@ -157,8 +158,8 @@ class PrimitiveElementPainter(AbstractElementPainter):
             if num_ports == 1:
                 return [rect.top() + total_height / 2]
 
-            max_total_spacing = total_height - CELL_SIZE
-            spacing = min(CELL_SIZE, max_total_spacing / (num_ports - 1))
+            max_total_spacing = total_height - PORTS_OFFSET
+            spacing = min(PORTS_OFFSET, max_total_spacing / (num_ports - 1))
             group_height = spacing * (num_ports - 1)
             start_y = rect.top() + (total_height - group_height) / 2
             return [start_y + i * spacing for i in range(num_ports)]
