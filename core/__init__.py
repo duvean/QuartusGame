@@ -4,3 +4,4 @@ from core.LevelFactory import LevelFactory
 from core.CustomElementFactory import CustomElementFactory
 
 USER_ELEMENTS_DIR = "user_elements"
+CELL_SIZE = 15
