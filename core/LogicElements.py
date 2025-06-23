@@ -274,6 +274,8 @@ class OutputElement(LogicElement):
 class AndElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="And")
+        self.height = 3
+        self.width = 5
         self._hide_ports_names()
 
     def compute_outputs(self):
@@ -286,6 +288,8 @@ class AndElement(LogicElement):
 class OrElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="Or")
+        self.height = 3
+        self.width = 5
         self._hide_ports_names()
 
     def compute_outputs(self):
@@ -298,6 +302,8 @@ class OrElement(LogicElement):
 class XorElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=2, num_outputs=1, name="Xor")
+        self.height = 3
+        self.width = 5
         self._hide_ports_names()
 
     def compute_outputs(self):
@@ -310,6 +316,8 @@ class XorElement(LogicElement):
 class NotElement(LogicElement):
     def __init__(self):
         super().__init__(num_inputs=1, num_outputs=1, name="Not")
+        self.height = 3
+        self.width = 5
         self._hide_ports_names()
 
     def compute_outputs(self):
