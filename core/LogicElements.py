@@ -27,7 +27,7 @@ class LogicElement(Categorized, ABC):
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
         self.width = width
-        self.height = ceil(max(num_inputs, num_outputs) * 1.5) + 1
+        self.height = max(self.num_inputs, self.num_outputs) + 2
         self.position: Optional[Tuple[int, int]] = None
         self.name = name
         self.is_sync = False
