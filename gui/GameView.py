@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QGraphicsView
 class GameView(QGraphicsView):
     def __init__(self, scene):
         super().__init__(scene)
+        scene.set_view(self)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
         self.setMouseTracking(True)

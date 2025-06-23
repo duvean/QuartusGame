@@ -6,7 +6,7 @@ from typing import Tuple, List, Optional
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, QHBoxLayout,
                              QLabel, QVBoxLayout, QFrame, QMessageBox, QInputDialog, QTabWidget,
                              QHeaderView, QGroupBox)
-from PyQt6.QtGui import QPainter, QIcon
+from PyQt6.QtGui import QPainter, QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from core import USER_ELEMENTS_DIR
@@ -28,6 +28,7 @@ class GameUI(QMainWindow):
         super().__init__()
         self.game_model = game_model
         self.selected_element_type = None
+        self.clipboard_data = None
         self.is_menu_expanded = False
         self.tab_metadata = {}
         self.init_ui()
@@ -83,6 +84,8 @@ class GameUI(QMainWindow):
         main_layout.addWidget(self.tab_widget, stretch=3)
         self.tabs: List[Tuple[GameScene, QGraphicsView]] = []
         self.add_new_scene_tab(self.game_model.grid.level.name, self.game_model.grid)
+
+        self._init_shortcuts()
 
         # === ПРАВАЯ ЧАСТЬ - ПАНЕЛЬ УПРАВЛЕНИЯ ===
         side_panel = QVBoxLayout()
@@ -286,6 +289,43 @@ class GameUI(QMainWindow):
                 }
             """)
 
+    def _init_shortcuts(self):
+        shortcut_copy = QShortcut(QKeySequence("Ctrl+C"), self)
+        shortcut_copy.activated.connect(self._copy_active_scene)
+
+        shortcut_cut = QShortcut(QKeySequence("Ctrl+X"), self)
+        shortcut_cut.activated.connect(self._cut_active_scene)
+
+        shortcut_paste = QShortcut(QKeySequence("Ctrl+V"), self)
+        shortcut_paste.activated.connect(self._paste_active_scene)
+
+        shortcut_paste = QShortcut(QKeySequence("Backspace"), self)
+        shortcut_paste.activated.connect(self._delete_active_scene)
+
+    def _get_active_scene(self) -> Optional[GameScene]:
+        index = self.tab_widget.currentIndex()
+        return self.tab_metadata.get(index, {}).get("scene")
+
+    def _copy_active_scene(self):
+        scene = self._get_active_scene()
+        if scene:
+            scene.copy_selected()
+
+    def _cut_active_scene(self):
+        scene = self._get_active_scene()
+        if scene:
+            scene.cut_selected()
+
+    def _paste_active_scene(self):
+        scene = self._get_active_scene()
+        if scene:
+            scene.paste_clipboard()
+
+    def _delete_active_scene(self):
+        scene = self._get_active_scene()
+        if scene:
+            scene.delete_selected()
+
     def toggle_side_menu(self):
         self.is_menu_expanded = not self.is_menu_expanded
         is_expanded = self.is_menu_expanded
@@ -404,26 +444,6 @@ class GameUI(QMainWindow):
 
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", f"Не удалось сохранить элемент: {e}")
-
-    def delete_custom_element(self, name: str):
-        # Удаляем из модели
-        self.game_model.toolbox = [
-            cls for cls in self.game_model.toolbox if cls.__name__ != name
-        ]
-
-        # Удаляем из QListWidget
-        items = self.toolbox.findItems(name, Qt.MatchFlag.MatchExactly)
-        for item in items:
-            row = self.toolbox.row(item)
-            self.toolbox.takeItem(row)
-
-        # Удаляем json-файл
-        path = os.path.join("user_elements", f"{name}.json")
-        if os.path.exists(path):
-            try:
-                os.remove(path)
-            except Exception as e:
-                QMessageBox.warning(self, "Ошибка", f"Не удалось удалить файл:\n{e}")
 
     def add_new_scene_tab(self, title: str, grid: Grid, element_name: Optional[str] = None,
                           save_path: Optional[str] = None):

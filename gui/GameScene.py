@@ -28,11 +28,10 @@ class GameScene(QGraphicsScene):
         self.setSceneRect(0, 0, 1200, 800)
         self.grid = grid
         self._parent_ui = None
+        self._view = None
         self.selected_port = None
         self.selected_element = None
         self.selected_elements: Set[LogicElementItem] = set()
-        self.clipboard_data = None
-        self.clipboard_offset = QPointF(20, 20)
         self.connections = []
         self.draw_grid()
         self.render_elements()
@@ -40,6 +39,9 @@ class GameScene(QGraphicsScene):
 
     def set_parent_ui(self, ui):
         self._parent_ui = ui
+
+    def set_view(self, view):
+        self._view = view
 
     def parent(self):
         return self._parent_ui
@@ -321,9 +323,8 @@ class GameScene(QGraphicsScene):
             scene_pos = item.scenePos() + QPointF(item.boundingRect().width() / 2, item.boundingRect().height() / 2)
 
             # Создаем QLineEdit
-            view = self.views()[0]  # QGraphicsView
-            edit = QLineEdit(item.logic_element.name, view)
-            edit.move(view.mapFromScene(scene_pos))
+            edit = QLineEdit(item.logic_element.name, self._view)
+            edit.move(self._view.mapFromScene(scene_pos))
             edit.setFixedWidth(100)
             edit.setFocus()
             edit.selectAll()
@@ -336,7 +337,7 @@ class GameScene(QGraphicsScene):
                     if success:
                         self.update()
                     else:
-                        QMessageBox.warning(view, "Ошибка", "Имя должно быть уникальным.")
+                        QMessageBox.warning(self._view, "Ошибка", "Имя должно быть уникальным.")
                 edit.deleteLater()
 
             edit.editingFinished.connect(finish_editing)
@@ -380,15 +381,14 @@ class GameScene(QGraphicsScene):
         event.accept()
 
     def copy_selected(self):
+        if not self.selected_elements:
+            return
+
         elements_data = []
         connections = []
         selected = list(self.selected_elements)
-        if not selected:
-            return
-
         selected_names = {item.logic_element.name for item in selected}
 
-        # Вычисляем самую левую верхнюю точку
         min_x = min(item.x() for item in selected)
         min_y = min(item.y() for item in selected)
         top_left = QPointF(min_x, min_y)
@@ -396,34 +396,49 @@ class GameScene(QGraphicsScene):
         for item in selected:
             element = item.logic_element
             rel_pos = QPointF(item.x(), item.y()) - top_left
-            data = {
+            elements_data.append({
                 'type': type(element),
                 'name': element.name,
                 'rel_pos': rel_pos,
                 'element': element
-            }
-            elements_data.append(data)
+            })
 
-            # сохраняем только входящие соединения от других выделенных
             for input_index, input_conns in enumerate(element.input_connections):
                 for src_element, src_index in input_conns:
                     if src_element.name in selected_names:
                         connections.append((src_element.name, src_index, element.name, input_index))
 
-        self.clipboard_data = {
-            'elements': elements_data,
-            'connections': connections
-        }
+        if self._parent_ui:
+            self._parent_ui.clipboard_data = {
+                'elements': elements_data,
+                'connections': connections
+            }
+
+    def cut_selected(self):
+        self.copy_selected()
+        for item in list(self.selected_elements):
+            self.delete_element(item)
+        self.update()
+
+    def delete_selected(self):
+        for item in list(self.selected_elements):
+            self.delete_element(item)
+        self.update()
 
     def paste_clipboard(self):
-        if not self.clipboard_data:
+        if not self._parent_ui or not self._parent_ui.clipboard_data:
             return
 
-        elements_data = self.clipboard_data['elements']
-        connections = self.clipboard_data['connections']
+        clipboard_data = self._parent_ui.clipboard_data
+        elements_data = clipboard_data['elements']
+        connections = clipboard_data['connections']
         name_map = {}
         new_items = []
-        mouse_pos = self.views()[0].mapToScene(self.views()[0].mapFromGlobal(QCursor.pos()))
+        if self._view is None:
+            print("Нет привязанного view — вставка отменена.")
+            return
+
+        mouse_pos = self._view.mapToScene(self._view.mapFromGlobal(QCursor.pos()))
 
         for data in elements_data:
             orig_element = data['element']
@@ -441,7 +456,6 @@ class GameScene(QGraphicsScene):
                 new_items.append(item)
                 name_map[data['name']] = new_element
 
-        # восстановление связей между новыми элементами
         for src_name, src_idx, dst_name, dst_idx in connections:
             src_elem = name_map.get(src_name)
             dst_elem = name_map.get(dst_name)
@@ -452,7 +466,6 @@ class GameScene(QGraphicsScene):
                 except Exception as e:
                     print(f"Ошибка при восстановлении соединения: {e}")
 
-        # обновление сцены
         self.clear_selection()
         for item in new_items:
             self.select_item(item, additive=True)
