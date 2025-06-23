@@ -1,4 +1,5 @@
 import math
+from typing import Set
 
 from PyQt6.QtWidgets import (
     QPushButton, QGraphicsScene, QGraphicsItem,
@@ -6,7 +7,7 @@ from PyQt6.QtWidgets import (
     QMenu, QDialog, QFormLayout, QComboBox, QVBoxLayout, QTabWidget, QWidget,
     QHBoxLayout, QListWidgetItem, QListWidget
 )
-from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath, QIcon, QIntValidator
+from PyQt6.QtGui import QPen, QColor, QTransform, QPainterPath, QIcon, QIntValidator, QCursor
 from PyQt6.QtCore import Qt, QPointF
 
 from core.LogicElements import InputElement, ClockGeneratorElement
@@ -29,6 +30,9 @@ class GameScene(QGraphicsScene):
         self._parent_ui = None
         self.selected_port = None
         self.selected_element = None
+        self.selected_elements: Set[LogicElementItem] = set()
+        self.clipboard_data = None
+        self.clipboard_offset = QPointF(20, 20)
         self.connections = []
         self.draw_grid()
         self.render_elements()
@@ -194,10 +198,27 @@ class GameScene(QGraphicsScene):
             if isinstance(element, ClockGeneratorElement):
                 element.stop()
 
-    def select_item(self, item: LogicElementItem):
-        self.clear_selection()
-        self.selected_element = item
-        item.is_selected = True
+    def select_item(self, item: LogicElementItem, additive=False):
+        if not additive:
+            self.clear_selection()
+
+        if not item.is_selected:
+            self.selected_elements.add(item)
+            item.is_selected = True
+            self.selected_element = item  # основной (для редактирования/соединения)
+        else:
+            self.selected_elements.remove(item)
+            item.is_selected = False
+            self.selected_element = None
+
+    def clear_selection(self):
+        for item in self.selected_elements:
+            item.is_selected = False
+            item.selected_port_index = None
+        self.selected_elements.clear()
+        self.selected_port = None
+        self.selected_element = None
+        self.update()
 
     def place_element(self, type, pos):
         x = math.floor(pos.x() / CELL_SIZE) * CELL_SIZE
@@ -214,13 +235,13 @@ class GameScene(QGraphicsScene):
         item = LogicElementItem(element, x, y)
         self.addItem(item)
 
-
     @staticmethod
     def connect_elements(source, source_idx, target, target_idx) -> bool:
         return source.connect_output(source_idx, target, target_idx)
 
     def delete_element(self, item: LogicElementItem):
-        self.removeItem(item)
+        if item.scene() is self:
+            self.removeItem(item)
         self.remove_connections_of(item.logic_element)
         self.grid.remove_element(item.logic_element)
         self.selected_element = None
@@ -230,6 +251,7 @@ class GameScene(QGraphicsScene):
         item = self.itemAt(event.scenePos(), QTransform())
 
         if isinstance(item, LogicElementItem):
+            additive = bool(event.modifiers() & Qt.KeyboardModifier.ShiftModifier)
             clicked_on_port = False
 
             if event.button() == Qt.MouseButton.RightButton:
@@ -279,9 +301,7 @@ class GameScene(QGraphicsScene):
                     break
 
             if not clicked_on_port:
-                self.clear_selection()
-                self.selected_element = item
-                item.is_selected = True
+                self.select_item(item, additive=additive)
 
         else:
             # Клик не по элементу — пробуем разместить новый, если он выбран
@@ -330,13 +350,113 @@ class GameScene(QGraphicsScene):
         super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Backspace:
-            if self.selected_element:
-                self.delete_element(self.selected_element)
-                self.update()
+        modifiers = event.modifiers()
+        key = event.key()
+
+        if modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_C:
+            self.copy_selected()
+            event.accept()
+            return
+        elif modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_X:
+            self.copy_selected()
+            for item in list(self.selected_elements):
+                self.delete_element(item)
+            self.update()
+            event.accept()
+            return
+        elif modifiers == Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_V:
+            self.paste_clipboard()
+            self.update()
+            event.accept()
+            return
+        elif key in (Qt.Key.Key_Backspace, Qt.Key.Key_Delete):
+            for item in list(self.selected_elements):
+                self.delete_element(item)
+            self.update()
+            event.accept()
+            return
 
         super().keyPressEvent(event)
         event.accept()
+
+    def copy_selected(self):
+        elements_data = []
+        connections = []
+        selected = list(self.selected_elements)
+        if not selected:
+            return
+
+        selected_names = {item.logic_element.name for item in selected}
+
+        # Вычисляем самую левую верхнюю точку
+        min_x = min(item.x() for item in selected)
+        min_y = min(item.y() for item in selected)
+        top_left = QPointF(min_x, min_y)
+
+        for item in selected:
+            element = item.logic_element
+            rel_pos = QPointF(item.x(), item.y()) - top_left
+            data = {
+                'type': type(element),
+                'name': element.name,
+                'rel_pos': rel_pos,
+                'element': element
+            }
+            elements_data.append(data)
+
+            # сохраняем только входящие соединения от других выделенных
+            for input_index, input_conns in enumerate(element.input_connections):
+                for src_element, src_index in input_conns:
+                    if src_element.name in selected_names:
+                        connections.append((src_element.name, src_index, element.name, input_index))
+
+        self.clipboard_data = {
+            'elements': elements_data,
+            'connections': connections
+        }
+
+    def paste_clipboard(self):
+        if not self.clipboard_data:
+            return
+
+        elements_data = self.clipboard_data['elements']
+        connections = self.clipboard_data['connections']
+        name_map = {}
+        new_items = []
+        mouse_pos = self.views()[0].mapToScene(self.views()[0].mapFromGlobal(QCursor.pos()))
+
+        for data in elements_data:
+            orig_element = data['element']
+            new_name = self.grid.generate_unique_name(orig_element.name.split()[0])
+            new_element = type(orig_element)()
+            new_element.name = new_name
+
+            offset_pos = data['rel_pos'] + mouse_pos
+            x = int(offset_pos.x()) // CELL_SIZE * CELL_SIZE
+            y = int(offset_pos.y()) // CELL_SIZE * CELL_SIZE
+
+            if self.grid.add_element(new_element, x // CELL_SIZE, y // CELL_SIZE):
+                item = LogicElementItem(new_element, x, y)
+                self.addItem(item)
+                new_items.append(item)
+                name_map[data['name']] = new_element
+
+        # восстановление связей между новыми элементами
+        for src_name, src_idx, dst_name, dst_idx in connections:
+            src_elem = name_map.get(src_name)
+            dst_elem = name_map.get(dst_name)
+            if src_elem and dst_elem:
+                try:
+                    src_elem.output_connections[src_idx].append((dst_elem, dst_idx))
+                    dst_elem.input_connections[dst_idx].append((src_elem, src_idx))
+                except Exception as e:
+                    print(f"Ошибка при восстановлении соединения: {e}")
+
+        # обновление сцены
+        self.clear_selection()
+        for item in new_items:
+            self.select_item(item, additive=True)
+        self.update_connections()
 
     def notify_modified(self):
         if self._parent_ui:
@@ -348,14 +468,6 @@ class GameScene(QGraphicsScene):
             if dialog.apply_changes():
                 self.notify_modified()
                 self.update()
-
-    def clear_selection(self):
-        if self.selected_element:
-            self.selected_element.is_selected = False
-            self.selected_element.selected_port_index = None
-        self.selected_element = None
-        self.selected_port = None
-        self.update()
 
     def remove_connections_of(self, element):
         element.disconnect_all()

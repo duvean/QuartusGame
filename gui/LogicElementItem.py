@@ -61,6 +61,6 @@ class LogicElementItem(QGraphicsItem):
 
     def paint(self, painter: QPainter, option, widget):
         rect = self.boundingRect()
-        is_selected = self.scene().selected_element == self
+        is_selected = self in self.scene().selected_elements
         painter_strategy = get_render_strategy_for(self.logic_element)
         painter_strategy.paint(painter, rect, self.logic_element, is_selected, self)
