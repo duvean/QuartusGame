@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QGraphicsView, Q
 from PyQt6.QtGui import QPainter, QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 
-from core import USER_ELEMENTS_DIR
+from core import USER_ELEMENTS_DIR, InputElement, OutputElement
 from core.Grid import Grid
 from core.Level import Level
 from core.CustomElementFactory import CustomElementFactory
@@ -427,6 +427,19 @@ class GameUI(QMainWindow):
 
         name = metadata["element_name"]
         grid = metadata["grid"]
+
+        # Сортировка портов по Y перед сериализацией
+        inputs = sorted(
+            [e for e in grid.elements if isinstance(e, InputElement)],
+            key=lambda el: el.position[1]
+        )
+        outputs = sorted(
+            [e for e in grid.elements if isinstance(e, OutputElement)],
+            key=lambda el: el.position[1]
+        )
+        others = [e for e in grid.elements if not isinstance(e, (InputElement, OutputElement))]
+        grid.elements = inputs + outputs + others  # Обновляем порядок в списке элементов
+
         grid_dict = grid.to_dict()
 
         filepath = metadata.get("save_path") or os.path.join(USER_ELEMENTS_DIR, f"{name}.json")

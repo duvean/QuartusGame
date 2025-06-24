@@ -110,28 +110,41 @@ class DefaultElementPainter(AbstractElementPainter):
         left_x = inner_rect.left()
         right_x = inner_rect.right()
 
-        def get_centered_ys(num_ports):
-            if num_ports == 0:
+        def get_centered_ys(n):
+            if n == 0:
                 return []
-
-            if num_ports == 1:
+            if n == 1:
                 return [inner_rect.top() + total_height / 2]
-
             max_total_spacing = total_height - PORTS_OFFSET
-            spacing = min(PORTS_OFFSET, max_total_spacing / (num_ports - 1))
-            group_height = spacing * (num_ports - 1)
+            spacing = min(PORTS_OFFSET, max_total_spacing / (n - 1))
+            group_height = spacing * (n - 1)
             start_y = inner_rect.top() + (total_height - group_height) / 2 + 1
+            return [start_y + i * spacing for i in range(n)]
 
-            return [start_y + i * spacing for i in range(num_ports)]
+        # Получаем порядок портов из вложенной схемы, если это CustomElement
+        if hasattr(element, "_subgrid"):
+            inputs = sorted(
+                [(e.name, e.position[1]) for e in element.get_subgrid().elements if isinstance(e, InputElement)],
+                key=lambda pair: pair[1]
+            )
+            outputs = sorted(
+                [(e.name, e.position[1]) for e in element.get_subgrid().elements if isinstance(e, OutputElement)],
+                key=lambda pair: pair[1]
+            )
+            input_names_sorted = [name for name, _ in inputs]
+            output_names_sorted = [name for name, _ in outputs]
+        else:
+            input_names_sorted = element.input_names
+            output_names_sorted = element.output_names
 
-        input_ys = get_centered_ys(element.num_inputs)
-        output_ys = get_centered_ys(element.num_outputs)
+        input_ys = get_centered_ys(len(input_names_sorted))
+        output_ys = get_centered_ys(len(output_names_sorted))
 
-        for i, y in enumerate(input_ys):
-            ports.append((left_x - 3, y, 'input', i))  # левее внутреннего прямоугольника
+        for i, (name, y) in enumerate(zip(input_names_sorted, input_ys)):
+            ports.append((left_x - 3, y, 'input', i))
 
-        for i, y in enumerate(output_ys):
-            ports.append((right_x + 3, y, 'output', i))  # правее внутреннего прямоугольника
+        for i, (name, y) in enumerate(zip(output_names_sorted, output_ys)):
+            ports.append((right_x + 3, y, 'output', i))
 
         return ports
 

@@ -12,14 +12,8 @@ class CustomElementFactory:
                 subgrid.load_from_dict(grid_data)
 
                 # Сортируем входы и выходы по y для воспроизводимого порядка
-                inputs = sorted(
-                    [e for e in subgrid.elements if isinstance(e, InputElement)],
-                    key=lambda el: el.position[1]
-                )
-                outputs = sorted(
-                    [e for e in subgrid.elements if isinstance(e, OutputElement)],
-                    key=lambda el: el.position[1]
-                )
+                inputs = [e for e in subgrid.elements if isinstance(e, InputElement)]
+                outputs = [e for e in subgrid.elements if isinstance(e, OutputElement)]
 
                 input_count = len(inputs)
                 output_count = len(outputs)
@@ -39,6 +33,9 @@ class CustomElementFactory:
 
                 # Флаг: нужна ли синхронная обработка
                 self.is_sync = any(getattr(e, "is_sync", False) for e in self._subgrid.elements)
+
+            def get_subgrid(self):
+                return self._subgrid
 
             def update_port_names_from_subgrid(self):
                 inputs = sorted(
